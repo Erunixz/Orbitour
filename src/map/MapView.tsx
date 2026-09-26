@@ -25,6 +25,8 @@ export type Focus = { kind: 'overview' } | { kind: 'stop'; index: number }
 
 type Props = {
   center: LatLon
+  /** Which day the stops belong to. Part of the camera focus, so switching days always flies. */
+  dayIndex: number
   stops: Stop[]
   /** legs[i] goes from stops[i] to stops[i + 1]. May be empty while routing. */
   legs: Leg[]
@@ -49,7 +51,7 @@ const apiKey = (import.meta.env.VITE_GOOGLE_TILES_KEY ?? '').trim()
 const ARRIVAL_LOOKBACK_M = 150
 
 export function MapView(props: Props) {
-  const { center, stops, legs, color, focus, onSelectStop, bottomInsetPx, followRoute } = props
+  const { center, dayIndex, stops, legs, color, focus, onSelectStop, bottomInsetPx, followRoute } = props
   const quality = useMemo(pickQuality, [])
   const frame = useMemo(() => new SceneFrame(center), [center])
   const visible = usePageVisible()
@@ -110,6 +112,7 @@ export function MapView(props: Props) {
         )}
         <Scene
           frame={frame}
+          dayIndex={dayIndex}
           stops={stops}
           stopHeights={stopHeights}
           paths={paths}
@@ -130,6 +133,7 @@ export function MapView(props: Props) {
 
 type SceneProps = {
   frame: SceneFrame
+  dayIndex: number
   stops: Stop[]
   stopHeights: Heights
   paths: RoutePath[]
@@ -143,7 +147,7 @@ type SceneProps = {
 }
 
 function Scene(props: SceneProps) {
-  const { frame, stops, stopHeights, paths, routeHeights, color, focus, reducedMotion, followRoute, pinRefs } = props
+  const { frame, dayIndex, stops, stopHeights, paths, routeHeights, color, focus, reducedMotion, followRoute, pinRefs } = props
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const size = useThree((s) => s.size)
 
@@ -195,23 +199,26 @@ function Scene(props: SceneProps) {
     return stopPose(here, arrivalHeading(i, positions, paths, frame))
   }, [focus, positions, paths, frame, overview])
 
-  // Neighbouring stops fly along their leg (reversed when going back).
+  // Neighbouring stops of the same day fly along their leg (reversed when going back).
   const pathBetween = useCallback(
     (fromKey: string, toKey: string): FlightPath | null => {
       if (!followRoute) return null
-      const a = stopIndex(fromKey)
-      const b = stopIndex(toKey)
-      if (a === null || b === null || Math.abs(a - b) !== 1) return null
+      const from = parseStopKey(fromKey)
+      const to = parseStopKey(toKey)
+      if (!from || !to || from.day !== dayIndex || to.day !== dayIndex) return null
+      const a = from.stop
+      const b = to.stop
+      if (Math.abs(a - b) !== 1) return null
       const points = routePoints[Math.min(a, b)]
       if (!points) return null
       return makeFlightPath(a < b ? points : points.slice().reverse())
     },
-    [followRoute, routePoints],
+    [followRoute, routePoints, dayIndex],
   )
 
   // Zoom-out limit must allow the overview, or the controls would clamp it.
   const maxDistance = Math.max(3000, overview.position.distanceTo(overview.target) * 1.3)
-  const focusKey = focus.kind === 'overview' ? 'overview' : `stop:${focus.index}`
+  const focusKey = focus.kind === 'overview' ? `day:${dayIndex}:overview` : `day:${dayIndex}:stop:${focus.index}`
 
   return (
     <>
@@ -230,9 +237,9 @@ function Scene(props: SceneProps) {
   )
 }
 
-function stopIndex(key: string): number | null {
-  const match = /^stop:(\d+)$/.exec(key)
-  return match ? Number(match[1]) : null
+function parseStopKey(key: string): { day: number; stop: number } | null {
+  const match = /^day:(\d+):stop:(\d+)$/.exec(key)
+  return match ? { day: Number(match[1]), stop: Number(match[2]) } : null
 }
 
 /**

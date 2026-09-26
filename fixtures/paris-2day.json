@@ -1,0 +1,434 @@
+{
+  "id": "fixture-paris-2day",
+  "title": "Two days in Paris",
+  "request": {
+    "city": "Paris",
+    "days": 2,
+    "startTime": "09:30",
+    "endTime": "18:00",
+    "startFrom": "Hôtel du Louvre",
+    "mustSee": [
+      "Notre-Dame",
+      "the Louvre",
+      "Eiffel Tower"
+    ],
+    "interests": [
+      "architecture",
+      "art",
+      "gardens",
+      "cafés"
+    ],
+    "pace": "relaxed",
+    "mode": "auto",
+    "party": "couple",
+    "budget": "modest",
+    "meals": [
+      "lunch"
+    ]
+  },
+  "center": {
+    "lat": 48.860386,
+    "lon": 2.330328
+  },
+  "radiusM": 3700,
+  "days": [
+    {
+      "index": 0,
+      "stops": [
+        {
+          "id": "wiki-notre-dame-de-paris",
+          "name": "Notre-Dame de Paris",
+          "kind": "sight",
+          "lat": 48.853056,
+          "lon": 2.35,
+          "summary": "Notre-Dame de Paris, often referred to simply as Notre-Dame, is a medieval Catholic cathedral and basilica on the Île de la Cité, in the 4th arrondissement of Paris, France. It is the cathedral church of the Roman Catholic Archdiocese of Paris.",
+          "reason": "You asked for it. A calm start before the crowds, in the historic heart of the city.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Notre-Dame_de_Paris%2C_4_October_2017.jpg/500px-Notre-Dame_de_Paris%2C_4_October_2017.jpg",
+            "credit": "Photo: Ali Sabbagh, CC0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Notre-Dame_de_Paris,_4_October_2017.jpg"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Notre-Dame_de_Paris"
+            }
+          ],
+          "visitMin": 60,
+          "arrive": "09:30",
+          "depart": "10:30",
+          "mustSee": true
+        },
+        {
+          "id": "wiki-sainte-chapelle",
+          "name": "Sainte-Chapelle",
+          "kind": "sight",
+          "lat": 48.855278,
+          "lon": 2.345,
+          "summary": "The Sainte-Chapelle is a royal chapel in the Gothic style, within the medieval Palais de la Cité, the residence of the Kings of France until the 14th century, on the Île de la Cité in the River Seine in Paris, France.",
+          "reason": "A short walk across the island, and some of the finest stained glass anywhere.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Sainte_Chapelle_-_Upper_level_1.jpg/500px-Sainte_Chapelle_-_Upper_level_1.jpg",
+            "credit": "Photo: Didier B (Sam67fr), CC BY-SA 2.5, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Sainte_Chapelle_-_Upper_level_1.jpg"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Sainte-Chapelle"
+            }
+          ],
+          "visitMin": 60,
+          "arrive": "10:40",
+          "depart": "11:40",
+          "mustSee": false
+        },
+        {
+          "id": "wiki-cafe-de-flore",
+          "name": "Café de Flore",
+          "kind": "food",
+          "lat": 48.854167,
+          "lon": 2.332639,
+          "summary": "The Café de Flore is one of the oldest coffeehouses in Paris, known for its emblematic shopfront and celebrated for its famous clientele, which in the past included influential writers, philosophers, and members of Parisian high society (tout-Paris).",
+          "reason": "A classic Left Bank café for a slow lunch, on the way south.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Caf%C3%A9_de_Flore%2C_172_boulevard_Saint-Germain%2C_Paris_6e.jpg/500px-Caf%C3%A9_de_Flore%2C_172_boulevard_Saint-Germain%2C_Paris_6e.jpg",
+            "credit": "Photo: Celette, CC BY-SA 4.0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Caf%C3%A9_de_Flore,_172_boulevard_Saint-Germain,_Paris_6e.jpg"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Caf%C3%A9_de_Flore"
+            }
+          ],
+          "visitMin": 75,
+          "arrive": "12:00",
+          "depart": "13:15",
+          "mustSee": false
+        },
+        {
+          "id": "wiki-jardin-du-luxembourg",
+          "name": "Luxembourg Garden",
+          "kind": "park",
+          "lat": 48.846944,
+          "lon": 2.337222,
+          "summary": "The Jardin du Luxembourg, known in English as the Luxembourg Garden, colloquially referred to as the Jardin du Sénat, is located in the 6th arrondissement of Paris, France.",
+          "reason": "A green break after the morning sights, good for a relaxed pace.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/LuxembourgMontparnasse.JPG/500px-LuxembourgMontparnasse.JPG",
+            "credit": "Photo: Kirua, Public domain, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:LuxembourgMontparnasse.JPG"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Jardin_du_Luxembourg"
+            }
+          ],
+          "visitMin": 60,
+          "arrive": "13:30",
+          "depart": "14:30",
+          "mustSee": false
+        },
+        {
+          "id": "wiki-pantheon",
+          "name": "Panthéon",
+          "kind": "sight",
+          "lat": 48.846111,
+          "lon": 2.345833,
+          "summary": "The Panthéon is a monument in the 5th arrondissement of Paris, France. It stands in the Latin Quarter, on the Montagne Sainte-Geneviève, in the centre of the Place du Panthéon, which was named after it.",
+          "reason": "A few minutes from the garden, and a fit for the interest in architecture.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Pantheon_of_Paris_007.JPG/500px-Pantheon_of_Paris_007.JPG",
+            "credit": "Photo: Moonik, CC BY-SA 3.0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Pantheon_of_Paris_007.JPG"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Panth%C3%A9on"
+            }
+          ],
+          "visitMin": 60,
+          "arrive": "14:45",
+          "depart": "15:45",
+          "mustSee": false
+        }
+      ],
+      "legs": [
+        {
+          "fromId": "wiki-notre-dame-de-paris",
+          "toId": "wiki-sainte-chapelle",
+          "mode": "walk",
+          "minutes": 8,
+          "meters": 574,
+          "polyline": "srdiHo~iM{Lf^",
+          "estimated": true
+        },
+        {
+          "fromId": "wiki-sainte-chapelle",
+          "toId": "wiki-cafe-de-flore",
+          "mode": "walk",
+          "minutes": 16,
+          "meters": 1187,
+          "polyline": "o`eiHg_iM|EflA",
+          "estimated": true
+        },
+        {
+          "fromId": "wiki-cafe-de-flore",
+          "toId": "wiki-jardin-du-luxembourg",
+          "mode": "walk",
+          "minutes": 15,
+          "meters": 1131,
+          "polyline": "qydiH_rfMdl@s[",
+          "estimated": true
+        },
+        {
+          "fromId": "wiki-jardin-du-luxembourg",
+          "toId": "wiki-pantheon",
+          "mode": "walk",
+          "minutes": 11,
+          "meters": 828,
+          "polyline": "klciHsngMdDyt@",
+          "estimated": true
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "index": 1,
+      "stops": [
+        {
+          "id": "wiki-louvre",
+          "name": "Louvre Museum",
+          "kind": "museum",
+          "lat": 48.8611,
+          "lon": 2.3358,
+          "summary": "The Louvre is a national art museum in Paris, France.",
+          "reason": "You asked for it. Go early and pick a few rooms rather than trying to see it all.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/Louvre_Museum_Wikimedia_Commons.jpg/500px-Louvre_Museum_Wikimedia_Commons.jpg",
+            "credit": "Photo: Benh LIEU SONG (Flickr), CC BY-SA 3.0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Louvre_Museum_Wikimedia_Commons.jpg"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Louvre"
+            }
+          ],
+          "visitMin": 135,
+          "arrive": "09:30",
+          "depart": "11:45",
+          "mustSee": true
+        },
+        {
+          "id": "wiki-angelina-tea-house",
+          "name": "Angelina",
+          "kind": "food",
+          "lat": 48.864936,
+          "lon": 2.328426,
+          "summary": "Angelina is a popular tea house and café with several locations in Paris and one location in NYC. Angelina is known primarily for its almost pudding-like hot chocolate and for its Mont Blanc dessert. The name is also marketed internationally for sweets.",
+          "reason": "Lunch across the road from the Tuileries, known for its hot chocolate.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/AngelinaParis.JPG/500px-AngelinaParis.JPG",
+            "credit": "Photo: Robert Schediwy, CC BY-SA 3.0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:AngelinaParis.JPG"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Angelina_(tea_house)"
+            }
+          ],
+          "visitMin": 60,
+          "arrive": "12:00",
+          "depart": "13:00",
+          "mustSee": false
+        },
+        {
+          "id": "wiki-tuileries-garden",
+          "name": "Tuileries Garden",
+          "kind": "park",
+          "lat": 48.8639,
+          "lon": 2.3261,
+          "summary": "The Tuileries Garden is a public garden between the Louvre and the Place de la Concorde in the 1st arrondissement of Paris, France.",
+          "reason": "An easy stroll west through the garden after lunch.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Crowd_in_the_Jardin_des_Tuileries%2C_Paris_July_2014.jpg/500px-Crowd_in_the_Jardin_des_Tuileries%2C_Paris_July_2014.jpg",
+            "credit": "Photo: Guilhem Vellut from Tokyo, Japan, CC BY 2.0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Crowd_in_the_Jardin_des_Tuileries,_Paris_July_2014.jpg"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Tuileries_Garden"
+            }
+          ],
+          "visitMin": 30,
+          "arrive": "13:05",
+          "depart": "13:35",
+          "mustSee": false
+        },
+        {
+          "id": "wiki-eiffel-tower",
+          "name": "Eiffel Tower",
+          "kind": "viewpoint",
+          "lat": 48.858222,
+          "lon": 2.2945,
+          "summary": "The Eiffel Tower is a lattice tower on the Champ de Mars in Paris, France. It is named after the engineer Gustave Eiffel, whose company designed and built the tower from 1887 to 1889.",
+          "reason": "You asked for it. The best-known view over the city.",
+          "photo": null,
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Eiffel_Tower"
+            }
+          ],
+          "visitMin": 75,
+          "arrive": "13:55",
+          "depart": "15:10",
+          "mustSee": true
+        },
+        {
+          "id": "wiki-arc-de-triomphe",
+          "name": "Arc de Triomphe",
+          "kind": "sight",
+          "lat": 48.873778,
+          "lon": 2.295028,
+          "summary": "The Arc de Triomphe de l'Étoile, often simply called the Arc de Triomphe, is one of the most famous monuments in Paris, France.",
+          "reason": "A walk across the river, with a second view from the roof terrace.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Arc_de_Triomphe_-_Ao%C3%BBt_2026.jpg/500px-Arc_de_Triomphe_-_Ao%C3%BBt_2026.jpg",
+            "credit": "Photo: ZeusUpsistos, CC BY-SA 4.0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Arc_de_Triomphe_-_Ao%C3%BBt_2026.jpg"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Arc_de_Triomphe"
+            }
+          ],
+          "visitMin": 45,
+          "arrive": "15:40",
+          "depart": "16:25",
+          "mustSee": false
+        },
+        {
+          "id": "wiki-sacre-c-ur-paris",
+          "name": "Sacré-Cœur",
+          "kind": "sight",
+          "lat": 48.88675,
+          "lon": 2.34306,
+          "summary": "The Basilica of the Sacred Heart of Montmartre, commonly known as Sacré-Cœur Basilica or simply Sacré-Cœur, is a Catholic church and minor basilica in Paris dedicated to the Sacred Heart of Jesus.",
+          "reason": "Ends the day on Montmartre with a view back over the whole city.",
+          "photo": {
+            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/Le_sacre_coeur.jpg/500px-Le_sacre_coeur.jpg",
+            "credit": "Photo: Tonchino, CC BY-SA 3.0, via Wikimedia Commons",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Le_sacre_coeur.jpg"
+          },
+          "sources": [
+            {
+              "kind": "wikipedia",
+              "label": "Wikipedia",
+              "url": "https://en.wikipedia.org/wiki/Sacr%C3%A9-C%C5%93ur%2C_Paris"
+            }
+          ],
+          "visitMin": 60,
+          "arrive": "16:55",
+          "depart": "17:55",
+          "mustSee": false
+        }
+      ],
+      "legs": [
+        {
+          "fromId": "wiki-louvre",
+          "toId": "wiki-angelina-tea-house",
+          "mode": "walk",
+          "minutes": 12,
+          "meters": 894,
+          "polyline": "{dfiHwegM_W`m@",
+          "estimated": true
+        },
+        {
+          "fromId": "wiki-angelina-tea-house",
+          "toId": "wiki-tuileries-garden",
+          "mode": "walk",
+          "minutes": 4,
+          "meters": 267,
+          "polyline": "{|fiHuweMnEpM",
+          "estimated": true
+        },
+        {
+          "fromId": "wiki-tuileries-garden",
+          "toId": "wiki-eiffel-tower",
+          "mode": "transit",
+          "minutes": 19,
+          "meters": 3355,
+          "polyline": "kvfiHcieMnb@ndE",
+          "estimated": true
+        },
+        {
+          "fromId": "wiki-eiffel-tower",
+          "toId": "wiki-arc-de-triomphe",
+          "mode": "walk",
+          "minutes": 30,
+          "meters": 2249,
+          "polyline": "{reiHsc_Mg`BiB",
+          "estimated": true
+        },
+        {
+          "fromId": "wiki-arc-de-triomphe",
+          "toId": "wiki-sacre-c-ur-paris",
+          "mode": "transit",
+          "minutes": 26,
+          "meters": 5316,
+          "polyline": "cthiH}f_MapAekH",
+          "estimated": true
+        }
+      ],
+      "warnings": [
+        "Sacré-Cœur sits on a steep hill. The funicular from the foot of the hill saves the climb."
+      ]
+    }
+  ],
+  "lodging": {
+    "id": "wiki-hotel-du-louvre",
+    "name": "Hôtel du Louvre",
+    "kind": "lodging",
+    "lat": 48.86283,
+    "lon": 2.33586,
+    "summary": "The Hôtel du Louvre is a Parisian luxury hotel in Haussmann architecture style, with a 5-star rating. It is located across the Louvre, on Place André-Malraux in the 1st arrondissement.",
+    "reason": "Central, between both days, and next to a metro hub.",
+    "photo": {
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3a/Paris_Hotel_du_Louvre.jpg/500px-Paris_Hotel_du_Louvre.jpg",
+      "credit": "Photo: Zairon, CC BY-SA 4.0, via Wikimedia Commons",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Paris_Hotel_du_Louvre.jpg"
+    },
+    "sources": [
+      {
+        "kind": "wikipedia",
+        "label": "Wikipedia",
+        "url": "https://en.wikipedia.org/wiki/H%C3%B4tel_du_Louvre"
+      }
+    ],
+    "visitMin": 0,
+    "arrive": "19:00",
+    "depart": "09:00",
+    "mustSee": false
+  },
+  "createdAt": "2026-09-25T10:00:00.000Z",
+  "updatedAt": "2026-09-25T10:00:00.000Z",
+  "version": 1
+}

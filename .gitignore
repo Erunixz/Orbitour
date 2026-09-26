@@ -2,7 +2,8 @@ node_modules
 dist
 dist-server
 .env
-.env.local
+.env.*
+!.env.example
 .vercel
 *.log
 coverage

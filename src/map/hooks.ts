@@ -17,6 +17,13 @@ export function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(reducedMotion.subscribe, reducedMotion.get, () => false)
 }
 
+const narrow = mediaQueryStore('(max-width: 760px)')
+
+/** True on phone-sized screens, where the sidebar becomes a bottom sheet. Matches the CSS breakpoint. */
+export function useNarrowScreen(): boolean {
+  return useSyncExternalStore(narrow.subscribe, narrow.get, () => false)
+}
+
 function subscribeVisibility(onChange: () => void) {
   document.addEventListener('visibilitychange', onChange)
   return () => document.removeEventListener('visibilitychange', onChange)

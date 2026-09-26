@@ -1,37 +1,12 @@
+import type { CSSProperties } from 'react'
 import { directionsUrl } from '../lib/mapsLink'
-import type { Leg, Stop, StopKind, TravelMode } from '../lib/types'
-
-const kindLabels: Record<StopKind, string> = {
-  sight: 'Sight',
-  museum: 'Museum',
-  park: 'Park',
-  viewpoint: 'Viewpoint',
-  market: 'Market',
-  food: 'Food',
-  lodging: 'Lodging',
-  other: 'Place',
-}
-
-export function formatDistance(meters: number): string {
-  return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`
-}
-
-const modeVerbs: Record<TravelMode, string> = {
-  walk: 'Walk',
-  transit: 'Transit',
-  drive: 'Drive',
-  cycle: 'Cycle',
-}
-
-export function formatMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = Math.round(minutes % 60)
-  if (h === 0) return `${m} min`
-  return m === 0 ? `${h} h` : `${h} h ${m} min`
-}
+import type { Leg, Stop } from '../lib/types'
+import { dayColor } from './dayColors'
+import { formatDistance, formatMinutes, kindLabels, modeLabels, transitLines } from './format'
 
 type Props = {
   stop: Stop
+  day: number
   index: number
   total: number
   previous: Stop | null
@@ -40,12 +15,15 @@ type Props = {
   incomingLeg: Leg | null
   /** Leg from this stop to the next one. */
   nextLeg: Leg | null
-  legsStatus: 'loading' | 'ready' | 'error'
 }
 
-export function StopCard({ stop, index, total, previous, next, incomingLeg, nextLeg, legsStatus }: Props) {
+export function StopCard({ stop, day, index, total, previous, next, incomingLeg, nextLeg }: Props) {
   return (
-    <article className="stop-card" aria-label={`Stop ${index + 1} of ${total}`}>
+    <article
+      className="stop-card"
+      style={{ '--day-color': dayColor(day) } as CSSProperties}
+      aria-label={`Day ${day + 1}, stop ${index + 1} of ${total}`}
+    >
       <div className="stop-photo">
         {stop.photo ? (
           <figure>
@@ -65,7 +43,7 @@ export function StopCard({ stop, index, total, previous, next, incomingLeg, next
 
       <div className="stop-body">
         <p className="stop-meta">
-          Stop {index + 1} of {total} · {kindLabels[stop.kind]}
+          Day {day + 1} · Stop {index + 1} of {total} · {kindLabels[stop.kind]}
           {stop.mustSee && <span className="badge">Must see</span>}
         </p>
         <h2>{stop.name}</h2>
@@ -77,7 +55,7 @@ export function StopCard({ stop, index, total, previous, next, incomingLeg, next
           <strong>Why it fits:</strong> {stop.reason}
         </p>
 
-        {next && <NextLeg next={next} leg={nextLeg} status={legsStatus} />}
+        {next ? <NextLeg next={next} leg={nextLeg} /> : <p className="stop-next">Last stop of the day.</p>}
 
         <p className="stop-links">
           <a
@@ -98,24 +76,22 @@ export function StopCard({ stop, index, total, previous, next, incomingLeg, next
   )
 }
 
-function NextLeg({ next, leg, status }: { next: Stop; leg: Leg | null; status: Props['legsStatus'] }) {
-  if (!leg) {
-    return (
-      <p className="stop-next">
-        Next: {next.name}. {status === 'loading' ? 'Working out travel time...' : 'Travel time unavailable.'}
-      </p>
-    )
-  }
-  const transitLines = leg.steps?.flatMap((s) => (s.mode === 'transit' && s.line ? [s.line] : [])) ?? []
+function NextLeg({ next, leg }: { next: Stop; leg: Leg | null }) {
+  if (!leg) return <p className="stop-next">Next: {next.name}. Travel time unavailable.</p>
+  const lines = transitLines(leg)
   return (
     <p className="stop-next">
-      Next: {modeVerbs[leg.mode]} {formatMinutes(leg.minutes)}, {formatDistance(leg.meters)} to {next.name}
-      {transitLines.length > 0 && <> via {transitLines.join(', ')}</>}
-      {leg.estimated && (
-        <span className="badge badge-muted" title="Routing was not available, so this is a straight-line estimate.">
-          Estimated
-        </span>
-      )}
+      Next: {modeLabels[leg.mode]} {formatMinutes(leg.minutes)}, {formatDistance(leg.meters)} to {next.name}
+      {lines.length > 0 && <> via {lines.join(', ')}</>}
+      {leg.estimated && <EstimatedBadge />}
     </p>
+  )
+}
+
+export function EstimatedBadge() {
+  return (
+    <span className="badge badge-muted" title="Routing was not available, so this is a straight-line estimate.">
+      Estimated
+    </span>
   )
 }

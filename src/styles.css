@@ -141,11 +141,19 @@ a {
   color: var(--accent);
 }
 
-/* Trip screen: map fills the viewport, UI floats on top. */
+/* Trip screen: sidebar on the left, map fills the rest, card and controls float on the map. */
 
 .trip-screen {
   position: fixed;
   inset: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+}
+
+.trip-main {
+  position: relative;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -154,9 +162,15 @@ a {
   inset: 0;
 }
 
+@media (max-width: 760px) {
+  .trip-screen {
+    grid-template-columns: 1fr;
+  }
+}
+
 .map-notice {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 5.5rem);
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
   left: 50%;
   transform: translateX(-50%);
   width: min(92vw, 440px);
@@ -175,21 +189,30 @@ a {
 
 .trip-header {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 1rem);
-  left: 1rem;
-  padding: 0.6rem 1rem;
+  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  left: 0.75rem;
+  right: 0.75rem;
+  width: fit-content;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.5rem 0.9rem;
   background: rgb(255 255 255 / 0.92);
   border-radius: var(--radius);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.1);
 }
 
 .trip-header h1 {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
 }
 
 .trip-header p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  .map-notice {
+    top: calc(env(safe-area-inset-top, 0px) + 4.75rem);
+  }
 }
 
 .trip-bottom {
@@ -197,9 +220,21 @@ a {
   left: 50%;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 1.75rem);
   transform: translateX(-50%);
-  width: min(calc(100vw - 2rem), 620px);
+  width: min(calc(100% - 2rem), 620px);
   display: grid;
   gap: 0.6rem;
+}
+
+@media (max-width: 760px) {
+  .trip-bottom {
+    width: calc(100% - 1.5rem);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+    gap: 0.5rem;
+  }
+
+  .stop-card {
+    max-height: 36vh;
+  }
 }
 
 .trip-controls {
@@ -267,8 +302,8 @@ a {
   place-items: center;
   aspect-ratio: 1;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-  color: var(--accent);
+  background: color-mix(in srgb, var(--day-color, var(--accent)) 12%, var(--surface));
+  color: var(--day-color, var(--accent));
   font-size: 2rem;
   font-weight: 700;
 }
@@ -328,6 +363,12 @@ a {
 
   .stop-photo-empty {
     font-size: 1.4rem;
+  }
+
+  .stop-photo figcaption {
+    font-size: 0.62rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -472,4 +513,242 @@ a {
   background: none;
   color: var(--accent);
   text-decoration: underline;
+}
+
+/* Sidebar (desktop) */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  box-shadow: 2px 0 12px rgb(0 0 0 / 0.06);
+  z-index: 1;
+}
+
+.trip-heading {
+  padding: 1.1rem 1.1rem 0.5rem;
+}
+
+.trip-heading h1 {
+  font-size: 1.3rem;
+}
+
+.trip-heading p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.trip-header .trip-heading {
+  padding: 0;
+}
+
+.trip-header .trip-heading h1 {
+  font-size: 1.05rem;
+}
+
+/* Keep the floating mobile header short. */
+.trip-header .trip-heading p + p {
+  display: none;
+}
+
+.sidebar .day-tabs {
+  padding: 0.5rem 1.1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem 0.6rem;
+}
+
+.sidebar-footer {
+  padding: 0.5rem 1.1rem 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Day tabs */
+
+.day-tabs {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+}
+
+.day-tab {
+  --day-color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.day-tab[aria-pressed='true'] {
+  border-color: var(--day-color);
+  background: color-mix(in srgb, var(--day-color) 12%, var(--surface));
+}
+
+.day-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--day-color);
+}
+
+.day-tab-date {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+/* Stop list */
+
+.day-panel {
+  --day-color: var(--accent);
+}
+
+.day-warnings {
+  margin: 0 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 1.75rem;
+  border-left: 4px solid var(--warn);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
+  font-size: 0.85rem;
+}
+
+.stop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stop-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.stop-row:hover {
+  background: var(--bg);
+}
+
+.stop-row[aria-current] {
+  background: color-mix(in srgb, var(--day-color) 12%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--day-color);
+}
+
+.stop-num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--day-color);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.overview-num {
+  background: none;
+  border: 2px dashed var(--day-color);
+}
+
+.stop-row-main {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.stop-row-name {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.stop-row-sub {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.stop-row-time {
+  display: grid;
+  flex: none;
+  text-align: right;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.leg-row {
+  margin: 0 0 0 1.4rem;
+  padding: 0.3rem 0 0.3rem 1.3rem;
+  border-left: 2px dotted color-mix(in srgb, var(--day-color) 60%, var(--border));
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.leg-estimated {
+  margin-left: 0.4rem;
+  color: var(--warn);
+}
+
+/* Mobile bottom sheet: day tabs and a button to open the stop list. */
+
+.sheet {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.16);
+}
+
+.sheet-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.sheet-bar .day-tabs {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet-toggle {
+  flex: none;
+  min-height: 40px;
+  padding: 0 0.85rem;
+  font-size: 0.9rem;
+}
+
+.sheet-panel {
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 0 0.4rem 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.sheet-panel .day-panel {
+  padding-top: 0.5rem;
+}
+
+.sheet-panel .toggle {
+  padding: 0 0.5rem;
 }

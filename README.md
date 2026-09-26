@@ -54,12 +54,19 @@ When the trip's travel mode is "auto", each leg picks walking, transit, or drivi
 
 ## Using the trip view
 
-- **Next** and **Back** (or the right and left arrow keys) fly from stop to stop.
+- The sidebar lists each day's stops with arrive and leave times and the travel between them. Pick a day tab, then a stop, to fly there. On a phone the list sits in a sheet at the bottom: tap **Stops** to open it.
+- **Next** and **Back** (or the right and left arrow keys) fly from stop to stop. After the last stop of a day, Next goes on to the next day.
 - **Overview** (or Escape) frames the whole day.
 - Click a pin to fly straight to it. Drag to orbit and scroll to zoom around the current stop.
 - With "reduce motion" turned on in your system settings, the camera cuts instead of flying.
 - Turn on **Fly along routes** to follow the street route between neighbouring stops instead of a direct arc.
-- Add `#stop=3` to the address to open on a given stop.
+- The address keeps your place, for example `#day=2&stop=3`, so a reload or a shared link opens the same stop.
+
+## Fixture mode
+
+Saved trips in `fixtures/` open with no planning calls, which is handy for UI work: `http://localhost:5173/?fixture=paris-2day`. Until planning is built, the app opens `paris-2day` by default.
+
+The sample trip uses straight-line travel estimates (marked "estimated"). Its summaries come from Wikipedia and its photos from Wikimedia Commons, with the author and license shown on each photo.
 
 ## Scripts
 

@@ -1,66 +1,61 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { LatLon, Stop } from '../lib/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Trip } from '../lib/types'
+import { useNarrowScreen } from '../map/hooks'
 import { MapView, type Focus } from '../map/MapView'
 import { dayColor } from './dayColors'
+import { formatMinutes } from './format'
 import { useFollowRoute } from './settings'
+import { DayPanel, DayTabs, FollowRouteToggle, TripHeading } from './Sidebar'
 import { StopCard } from './StopCard'
-import { useLegs } from './useLegs'
-
-type Props = {
-  title: string
-  center: LatLon
-  stops: Stop[]
-}
+import { backView, dayView, hashForView, nextView, sameView, stopView, viewFromHash, type View } from './tripNav'
 
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-/** "#stop=3" opens on the third stop. */
-function focusFromHash(stopCount: number): Focus {
-  const match = /(?:^|[#&])stop=(\d+)/.exec(window.location.hash)
-  const n = match ? Number(match[1]) : 0
-  return n >= 1 && n <= stopCount ? { kind: 'stop', index: n - 1 } : { kind: 'overview' }
-}
-
-export function TripScreen({ title, center, stops }: Props) {
-  const [focus, setFocus] = useState<Focus>(() => focusFromHash(stops.length))
+export function TripScreen({ trip }: { trip: Trip }) {
+  const counts = useMemo(() => trip.days.map((d) => d.stops.length), [trip])
+  const [view, setView] = useState<View>(() => viewFromHash(window.location.hash, counts))
   const [followRoute, setFollowRoute] = useFollowRoute()
-  const { state: legsState, retry: retryLegs } = useLegs(stops, 'auto', 'modest')
-  const legs = legsState.kind === 'ready' ? legsState.legs : []
-  const current = focus.kind === 'stop' ? focus.index : -1
-  const last = stops.length - 1
+  const narrow = useNarrowScreen()
+  const [sheetOpen, setSheetOpen] = useState(false)
 
-  const next = useCallback(() => {
-    setFocus((f) => {
-      const i = f.kind === 'stop' ? f.index : -1
-      return i < last ? { kind: 'stop', index: i + 1 } : f
-    })
-  }, [last])
+  const day = trip.days[view.day] ?? trip.days[0]!
+  const stop = view.stop === null ? undefined : day.stops[view.stop]
+  const focus: Focus = view.stop === null ? { kind: 'overview' } : { kind: 'stop', index: view.stop }
 
-  const back = useCallback(() => {
-    setFocus((f) => {
-      if (f.kind !== 'stop') return f
-      return f.index === 0 ? { kind: 'overview' } : { kind: 'stop', index: f.index - 1 }
-    })
+  // Keep the address in step so a reload opens the same place. No history entries.
+  useEffect(() => {
+    const hash = hashForView(view)
+    if (hash === window.location.hash) return
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`)
+  }, [view])
+
+  const go = useCallback((to: View) => {
+    setView((v) => (sameView(v, to) ? v : to))
+    setSheetOpen(false)
   }, [])
-
-  const overview = useCallback(() => setFocus({ kind: 'overview' }), [])
-  const select = useCallback((index: number) => setFocus({ kind: 'stop', index }), [])
+  const next = useCallback(() => setView((v) => nextView(v, counts)), [counts])
+  const back = useCallback(() => setView((v) => backView(v, counts)), [counts])
+  const overview = useCallback(() => setView((v) => ({ day: v.day, stop: null })), [])
+  const selectDay = useCallback((d: number) => setView((v) => (v.day === d ? v : dayView(d, counts))), [counts])
+  const selectStop = useCallback((i: number) => go(stopView(view.day, i, counts)), [go, view.day, counts])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (isTyping(event.target) || event.altKey || event.ctrlKey || event.metaKey) return
       if (event.key === 'ArrowRight') next()
       else if (event.key === 'ArrowLeft') back()
-      else if (event.key === 'Escape') overview()
-      else return
+      else if (event.key === 'Escape') {
+        if (sheetOpen) setSheetOpen(false)
+        else overview()
+      } else return
       event.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [next, back, overview])
+  }, [next, back, overview, sheetOpen])
 
   // Keep the camera framing clear of the bottom panel.
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -68,7 +63,11 @@ export function TripScreen({ title, center, stops }: Props) {
   useEffect(() => {
     const el = bottomRef.current
     if (!el) return
-    const measure = () => setBottomInset(Math.round(window.innerHeight - el.getBoundingClientRect().top))
+    const measure = () => {
+      const map = el.parentElement?.getBoundingClientRect()
+      const bottom = map ? map.bottom : window.innerHeight
+      setBottomInset(Math.max(0, Math.round(bottom - el.getBoundingClientRect().top)))
+    }
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     window.addEventListener('resize', measure)
@@ -79,72 +78,125 @@ export function TripScreen({ title, center, stops }: Props) {
     }
   }, [])
 
-  const stop = stops[current]
+  const canBack = !sameView(backView(view, counts), view)
+  const canNext = !sameView(nextView(view, counts), view)
+
+  const dayPanel = (
+    <DayPanel day={day} dayIndex={view.day} view={view} onOverview={() => go(dayView(view.day, counts))} onSelectStop={selectStop} />
+  )
+  const dayTabs = <DayTabs days={trip.days} current={view.day} onSelect={selectDay} />
 
   return (
     <div className="trip-screen">
-      <MapView
-        center={center}
-        stops={stops}
-        legs={legs}
-        followRoute={followRoute}
-        color={dayColor(0)}
-        focus={focus}
-        onSelectStop={select}
-        bottomInsetPx={bottomInset}
-      />
+      {!narrow && (
+        <aside className="sidebar" aria-label="Trip plan">
+          <TripHeading trip={trip} />
+          {dayTabs}
+          <div className="sidebar-scroll">{dayPanel}</div>
+          <footer className="sidebar-footer">
+            <FollowRouteToggle value={followRoute} onChange={setFollowRoute} />
+          </footer>
+        </aside>
+      )}
 
-      <header className="trip-header">
-        <h1>{title}</h1>
-        <p className="muted">{stops.length} stops</p>
-        <label className="toggle">
-          <input type="checkbox" checked={followRoute} onChange={(e) => setFollowRoute(e.target.checked)} />
-          Fly along routes
-        </label>
-      </header>
+      <main className="trip-main">
+        <MapView
+          center={trip.center}
+          dayIndex={view.day}
+          stops={day.stops}
+          legs={day.legs}
+          followRoute={followRoute}
+          color={dayColor(view.day)}
+          focus={focus}
+          onSelectStop={selectStop}
+          bottomInsetPx={bottomInset}
+        />
 
-      <div className="trip-bottom" ref={bottomRef}>
-        {stop ? (
-          <StopCard
-            key={stop.id}
-            stop={stop}
-            index={current}
-            total={stops.length}
-            previous={stops[current - 1] ?? null}
-            next={stops[current + 1] ?? null}
-            incomingLeg={legs[current - 1] ?? null}
-            nextLeg={legs[current] ?? null}
-            legsStatus={legsState.kind}
-          />
-        ) : (
-          <article className="stop-card overview-card">
-            <div className="stop-body">
-              <h2>Overview</h2>
-              <p>Press Next or click a pin to fly to the first stop. Use the arrow keys to move and Escape to come back here.</p>
-              {legsState.kind === 'error' && (
-                <p className="error-inline">
-                  {legsState.message}{' '}
-                  <button type="button" className="link-button" onClick={retryLegs}>
-                    Try again
-                  </button>
-                </p>
-              )}
-            </div>
-          </article>
+        {narrow && (
+          <header className="trip-header">
+            <TripHeading trip={trip} />
+          </header>
         )}
 
-        <nav className="trip-controls" aria-label="Stop navigation">
-          <button type="button" onClick={back} disabled={focus.kind === 'overview'}>
-            Back
-          </button>
-          <button type="button" className="secondary" onClick={overview} disabled={focus.kind === 'overview'}>
-            Overview
-          </button>
-          <button type="button" onClick={next} disabled={current >= last}>
-            Next
-          </button>
-        </nav>
-      </div>
+        <div className="trip-bottom" ref={bottomRef}>
+          {!(narrow && sheetOpen) &&
+            (stop && view.stop !== null ? (
+              <StopCard
+                key={stop.id}
+                stop={stop}
+                day={view.day}
+                index={view.stop}
+                total={day.stops.length}
+                previous={day.stops[view.stop - 1] ?? null}
+                next={day.stops[view.stop + 1] ?? null}
+                incomingLeg={day.legs[view.stop - 1] ?? null}
+                nextLeg={day.legs[view.stop] ?? null}
+              />
+            ) : (
+              <OverviewCard dayIndex={view.day} trip={trip} />
+            ))}
+
+          <nav className="trip-controls" aria-label="Stop navigation">
+            <button type="button" onClick={back} disabled={!canBack}>
+              Back
+            </button>
+            <button type="button" className="secondary" onClick={overview} disabled={view.stop === null}>
+              Overview
+            </button>
+            <button type="button" onClick={next} disabled={!canNext}>
+              Next
+            </button>
+          </nav>
+
+          {narrow && (
+            <section className={`sheet${sheetOpen ? ' is-open' : ''}`} aria-label="Trip plan">
+              <div className="sheet-bar">
+                {dayTabs}
+                <button
+                  type="button"
+                  className="secondary sheet-toggle"
+                  aria-expanded={sheetOpen}
+                  aria-controls="sheet-panel"
+                  onClick={() => setSheetOpen((o) => !o)}
+                >
+                  {sheetOpen ? 'Hide stops' : `Stops (${day.stops.length})`}
+                </button>
+              </div>
+              {sheetOpen && (
+                <div className="sheet-panel" id="sheet-panel">
+                  {dayPanel}
+                  <FollowRouteToggle value={followRoute} onChange={setFollowRoute} />
+                </div>
+              )}
+            </section>
+          )}
+        </div>
+      </main>
     </div>
+  )
+}
+
+function OverviewCard({ trip, dayIndex }: { trip: Trip; dayIndex: number }) {
+  const day = trip.days[dayIndex]
+  if (!day) return null
+  const travel = day.legs.reduce((n, leg) => n + leg.minutes, 0)
+  const first = day.stops[0]
+  const last = day.stops[day.stops.length - 1]
+  return (
+    <article className="stop-card overview-card">
+      <div className="stop-body">
+        <h2>
+          Day {dayIndex + 1} of {trip.days.length}
+        </h2>
+        {first && last ? (
+          <p className="stop-time">
+            {first.arrive} to {last.depart} · {day.stops.length} stops · about {formatMinutes(travel)} getting around
+          </p>
+        ) : (
+          <p className="muted">No stops on this day.</p>
+        )}
+        <p>Press Next or pick a stop to fly there. Use the arrow keys to move and Escape to come back here.</p>
+      </div>
+    </article>
   )
 }
