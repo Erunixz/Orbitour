@@ -31,6 +31,8 @@ export type TripRequest = {
   budget: Budget
   meals: Meal[]
   diet?: string
+  /** "YYYY-MM-DD". Optional; gives each day a date and a weather check. */
+  startDate?: string
 }
 
 export type StopKind = 'sight' | 'museum' | 'park' | 'viewpoint' | 'market' | 'food' | 'lodging' | 'other'

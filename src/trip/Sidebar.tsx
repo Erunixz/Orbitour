@@ -19,6 +19,9 @@ export function TripHeading({ trip }: { trip: Trip }) {
         {trip.days.length === 1 ? '1 day' : `${trip.days.length} days`} · {stopCount} stops
       </p>
       {trip.lodging && <p className="muted">Staying at {trip.lodging.name}</p>}
+      <a className="new-trip" href="/">
+        New trip
+      </a>
     </div>
   )
 }

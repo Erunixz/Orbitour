@@ -44,6 +44,10 @@ export const tripRequestSchema = z.object({
   budget: budgetSchema,
   meals: z.array(z.enum(['lunch', 'dinner'])),
   diet: z.string().max(120).optional(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date like "2026-10-03"')
+    .optional(),
 })
 
 export const sourceSchema = z.object({

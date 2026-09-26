@@ -7,6 +7,9 @@ import { fetchWithRetry, type RetryOptions } from './fetchRetry.js'
 // https://developers.google.com/maps/documentation/routes/compute_route_directions
 
 const COMPUTE_ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes'
+const ROUTE_MATRIX_URL = 'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix'
+
+export const MATRIX_FIELD_MASK = 'originIndex,destinationIndex,duration,distanceMeters,condition'
 
 export const ROUTE_FIELD_MASK = [
   'routes.duration',
@@ -93,10 +96,64 @@ export type RoutesClient = {
   computeRoute(from: LatLon, to: LatLon, mode: TravelMode): Promise<RouteResult | null>
 }
 
+/** Travel minutes between every pair of points; null where Google found no route. */
+export type TravelMatrix = (number | null)[][]
+
+export type RouteMatrixClient = {
+  /** Throws UpstreamError on failure. */
+  computeMatrix(points: LatLon[], mode: TravelMode): Promise<TravelMatrix>
+}
+
+const matrixSchema = z.array(
+  z.object({
+    originIndex: z.number().optional(),
+    destinationIndex: z.number().optional(),
+    duration: z.string().optional(),
+    condition: z.string().optional(),
+  }),
+)
+
+/** Turns the matrix response (a list of elements) into a square grid of minutes. */
+export function parseMatrix(body: unknown, size: number): TravelMatrix {
+  const grid: TravelMatrix = Array.from({ length: size }, (_, i) =>
+    Array.from({ length: size }, (_, j) => (i === j ? 0 : null)),
+  )
+  const parsed = matrixSchema.safeParse(body)
+  if (!parsed.success) return grid
+  for (const el of parsed.data) {
+    // Index 0 is left out of the JSON, as protobuf default values are.
+    const i = el.originIndex ?? 0
+    const j = el.destinationIndex ?? 0
+    const seconds = parseDuration(el.duration)
+    if (i === j || el.condition !== 'ROUTE_EXISTS' || seconds === null) continue
+    const row = grid[i]
+    if (row && j < size) row[j] = seconds / 60
+  }
+  return grid
+}
+
 const waypoint = (p: LatLon) => ({ location: { latLng: { latitude: p.lat, longitude: p.lon } } })
 
-export function createRoutesClient(apiKey: string, retry: Partial<RetryOptions> = {}): RoutesClient {
+export function createRoutesClient(apiKey: string, retry: Partial<RetryOptions> = {}): RoutesClient & RouteMatrixClient {
   return {
+    async computeMatrix(points, mode) {
+      const places = points.map((p) => ({ waypoint: waypoint(p) }))
+      const res = await fetchWithRetry(
+        ROUTE_MATRIX_URL,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': MATRIX_FIELD_MASK,
+          },
+          body: JSON.stringify({ origins: places, destinations: places, travelMode: googleModes[mode] }),
+        },
+        { ...retry, service: 'routes-matrix' },
+      )
+      return parseMatrix(await res.json(), points.length)
+    },
+
     async computeRoute(from, to, mode) {
       const body: Record<string, unknown> = {
         origin: waypoint(from),

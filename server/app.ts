@@ -1,9 +1,18 @@
-import { MemoryCache, type Cache } from './cache.js'
+import { randomUUID } from 'node:crypto'
+import { MemoryCache } from './cache.js'
 import { hasValue, type Env } from './env.js'
 import { ApiError, sendError, sendJson, type Req, type Res } from './http.js'
+import { createLlm } from './llm/openai.js'
 import { buildHealth } from './routes/health.js'
 import { handleLegs } from './routes/legs.js'
-import { createRoutesClient, type RoutesClient } from './upstream/googleRoutes.js'
+import { handleGetTrip, handlePlanTrip, type TripRouteDeps } from './routes/trips.js'
+import { MemoryTripStore } from './store/tripStore.js'
+import { createRoutesClient } from './upstream/googleRoutes.js'
+import { createNominatim } from './upstream/nominatim.js'
+import { createWeather } from './upstream/openMeteo.js'
+import { createOverpass } from './upstream/overpass.js'
+import { userAgent } from './upstream/politeness.js'
+import { createWikipedia } from './upstream/wikipedia.js'
 
 type Handler = (req: Req, res: Res, params: Record<string, string>) => Promise<void> | void
 
@@ -19,17 +28,26 @@ function compile(path: string): { pattern: RegExp; keys: string[] } {
   return { pattern: new RegExp(`^${source}/?$`), keys }
 }
 
-export type AppDeps = {
-  cache: Cache
-  routes: RoutesClient | null
-  log: (message: string) => void
-}
+export type AppDeps = TripRouteDeps
 
 export function defaultDeps(env: Env): AppDeps {
+  const cache = new MemoryCache()
+  const log = (message: string) => console.log(message)
+  const agent = userAgent(env)
+  const google = hasValue(env, 'GOOGLE_ROUTES_KEY') ? createRoutesClient(env.GOOGLE_ROUTES_KEY!.trim()) : null
   return {
-    cache: new MemoryCache(),
-    routes: hasValue(env, 'GOOGLE_ROUTES_KEY') ? createRoutesClient(env.GOOGLE_ROUTES_KEY!.trim()) : null,
-    log: (message) => console.log(message),
+    cache,
+    log,
+    routes: google,
+    matrix: google,
+    nominatim: createNominatim({ userAgent: agent, cache }),
+    wikipedia: createWikipedia({ userAgent: agent, cache }),
+    overpass: createOverpass({ userAgent: agent, cache }),
+    weather: createWeather({ cache }),
+    llm: createLlm(env, { log }),
+    store: new MemoryTripStore(),
+    now: () => new Date(),
+    newId: () => randomUUID(),
   }
 }
 
@@ -42,6 +60,8 @@ export function createApp(env: Env = process.env, deps: AppDeps = defaultDeps(en
 
   add('GET', '/api/health', (_req, res) => sendJson(res, 200, buildHealth(env)))
   add('POST', '/api/routes/legs', (req, res) => handleLegs(req, res, deps))
+  add('POST', '/api/trips', (req, res) => handlePlanTrip(req, res, deps))
+  add('GET', '/api/trips/:id', (_req, res, params) => handleGetTrip(res, params.id ?? '', deps))
 
   return async function handle(req: Req, res: Res): Promise<void> {
     try {
