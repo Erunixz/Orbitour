@@ -1,0 +1,43 @@
+{
+  "name": "app-name-placeholder",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "dev": "npm run build:server && concurrently -k -n web,api,tsc -c cyan,green,gray \"npm:dev:web\" \"npm:dev:server\" \"npm:dev:server-watch\"",
+    "dev:web": "vite",
+    "dev:server": "node --watch dist-server/server/main.js",
+    "dev:server-watch": "tsc -p tsconfig.server.json --watch --preserveWatchOutput",
+    "build": "npm run typecheck && vite build && npm run build:server",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "node dist-server/server/main.js",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "3d-tiles-renderer": "^0.5.3",
+    "mongodb": "^6.21.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "three": "^0.186.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.4",
+    "typescript": "^7.0.2",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.7"
+  }
+}

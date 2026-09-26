@@ -1,0 +1,475 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c2330;
+  --muted: #647085;
+  --border: #e2e6ec;
+  --accent: #2f6fed;
+  --ok: #1f9d55;
+  --warn: #b7791f;
+  --danger: #d64545;
+  --radius: 12px;
+
+  color-scheme: light;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2 {
+  margin: 0 0 0.25rem;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 1.75rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+p {
+  margin: 0.5rem 0;
+}
+
+button {
+  font: inherit;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.shell {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.warn {
+  color: var(--warn);
+}
+
+.error p {
+  color: var(--danger);
+}
+
+.keys {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.keys li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.keys code {
+  font-size: 0.9rem;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dot.on {
+  background: var(--ok);
+}
+
+.dot.off {
+  background: var(--border);
+  border: 1px solid var(--muted);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+a {
+  color: var(--accent);
+}
+
+/* Trip screen: map fills the viewport, UI floats on top. */
+
+.trip-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.map-notice {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 5.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 440px);
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warn);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.12);
+  font-size: 0.95rem;
+}
+
+.map-notice p {
+  margin: 0 0 0.5rem;
+}
+
+.trip-header {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  left: 1rem;
+  padding: 0.6rem 1rem;
+  background: rgb(255 255 255 / 0.92);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.1);
+}
+
+.trip-header h1 {
+  font-size: 1.15rem;
+}
+
+.trip-header p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.trip-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1.75rem);
+  transform: translateX(-50%);
+  width: min(calc(100vw - 2rem), 620px);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.trip-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.trip-controls button {
+  flex: 1;
+  max-width: 160px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+}
+
+/* Stop card */
+
+.stop-card {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.16);
+  max-height: 42vh;
+  overflow-y: auto;
+  animation: card-in 220ms ease-out;
+}
+
+.stop-card.overview-card {
+  grid-template-columns: 1fr;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stop-card {
+    animation: none;
+  }
+}
+
+.stop-photo figure {
+  margin: 0;
+}
+
+.stop-photo img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.stop-photo figcaption {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.stop-photo-empty {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--accent);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.stop-body h2 {
+  font-size: 1.25rem;
+}
+
+.stop-body p {
+  margin: 0.35rem 0;
+  font-size: 0.95rem;
+}
+
+.stop-meta {
+  color: var(--muted);
+  font-size: 0.85rem !important;
+}
+
+.stop-time {
+  font-weight: 600;
+}
+
+.stop-reason,
+.stop-next {
+  color: var(--muted);
+}
+
+.stop-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.stop-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .stop-card:not(.overview-card) {
+    grid-template-columns: 72px 1fr;
+    gap: 0.75rem;
+    padding: 0.8rem;
+  }
+
+  .stop-photo-empty {
+    font-size: 1.4rem;
+  }
+}
+
+/* Pins: the button sits at the projected point; the body is drawn above it so the tip touches the surface. */
+
+.pin-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pin {
+  --pin-color: var(--accent);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  will-change: transform;
+}
+
+.pin-body {
+  position: absolute;
+  left: -17px;
+  top: -38px;
+  width: 34px;
+  height: 38px;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.pin-body::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 30px;
+  height: 30px;
+  transform: rotate(45deg);
+  border-radius: 50% 50% 0 50%;
+  background: var(--pin-color);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+.pin-number {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 20px;
+  text-align: center;
+}
+
+.pin.is-dim .pin-body {
+  opacity: 0.55;
+}
+
+.pin.is-current {
+  z-index: 5000 !important;
+}
+
+.pin.is-current .pin-body {
+  transform: scale(1.25);
+}
+
+.pin:focus-visible {
+  outline: none;
+}
+
+.pin:focus-visible .pin-body::before {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pin-body {
+    transition: none;
+  }
+}
+
+/* Tiles credit bar (the overlay positions it at the bottom of the canvas). */
+
+.tiles-credit {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
+}
+
+.google-mark {
+  font-family: 'Product Sans', Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.tiles-credit-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-muted {
+  background: color-mix(in srgb, var(--warn) 16%, var(--surface));
+  color: var(--warn);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  min-height: 32px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.error-inline {
+  color: var(--danger);
+}
+
+.link-button {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
