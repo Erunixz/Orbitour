@@ -1,4 +1,4 @@
-# [APP_NAME]
+# Orbitour
 
 A trip planner where the 3D city is the interface. Name a city, describe the trip, and get a day-by-day plan on real streets. Then move through it one stop at a time on photorealistic 3D tiles.
 
