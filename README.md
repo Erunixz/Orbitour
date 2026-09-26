@@ -1,15 +1,16 @@
 # Orbitour
 
-A trip planner where the 3D city is the interface. Name a city, describe the trip, and get a day-by-day plan on real streets. Then move through it one stop at a time on photorealistic 3D tiles.
+A trip planner where the 3D city is the interface. Name a city and describe the trip, and a crew of code tools and two AI agents builds a day-by-day plan on real streets. Then move through it one stop at a time on photorealistic 3D tiles, and change it by hand or by typing what you want.
 
-This README is a stub. It will grow as features land.
+- Numbered pins on real rooftops, routes along the streets, one colour per day.
+- Next and Back fly the camera from stop to stop. A card shows the photo, times, why it fits, and the next leg.
+- Every place comes from a real source (Wikipedia or OpenStreetMap). All times and routes are worked out in code, never by the AI.
+- Edit stops, add places, type changes like "drop the museum, slower morning", and undo.
+- Trips are saved and can be reopened.
 
-## Requirements
+## Quick start
 
-- Node 20.12 or newer (Vite 7 would need 20.19+, so this project uses Vite 6 for now)
-- npm
-
-## Setup
+Requirements: Node 20.12 or newer, and npm.
 
 ```bash
 npm install
@@ -17,132 +18,186 @@ cp .env.example .env   # then fill in the keys you have
 npm run dev
 ```
 
-`npm run dev` starts two things:
+This starts the web app at http://localhost:5173 and the API server at http://localhost:8787 (the web app forwards `/api` to it). Open http://localhost:5173/status to see which settings are set and whether the database is reachable.
 
-- the web app at http://localhost:5173
-- the API server at http://localhost:8787 (the web app proxies `/api` to it)
+The app runs with no keys at all: you can open the sample trip and try the map on a plain grid. To plan trips you need an OpenAI key.
 
-The server starts without any keys. Open http://localhost:5173/status, or `http://localhost:8787/api/health`, to see which settings are missing.
+On Windows, stopping `npm run dev` with Ctrl+C can leave node running. If the next start says a port is in use, run in PowerShell:
 
-## 3D city (Google Photorealistic 3D Tiles)
+```powershell
+Get-NetTCPConnection -LocalPort 5173,8787 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
 
-1. In Google Cloud Console, enable the **Map Tiles API** and set up billing.
-2. Create an API key. Under key restrictions choose **HTTP referrers** and add `http://localhost:5173/*` (and your deployed site later). Under API restrictions allow only the Map Tiles API.
-3. Put the key in `.env` as `VITE_GOOGLE_TILES_KEY` and restart `npm run dev`.
-4. Set a daily quota cap for the Map Tiles API in Google Cloud Console (APIs and Services, Map Tiles API, Quotas). This is the real cost guard.
+## Settings
 
-Without a key the map shows a plain grid with the pins, so you can still try the navigation.
+All settings live in `.env`, which git ignores. Never put keys anywhere else.
 
-Cost guards in the app:
+| Setting | Needed for | Without it |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | Planning and typed changes | Planning stops at the Scout with a clear message |
+| `LLM_MODEL_SCOUT`, `LLM_MODEL_CRITIC` | The two planning agents (can be the same model) | Same as above; without the Critic model, plans skip the review |
+| `LLM_MODEL_FAST` | Typed changes ("drop the museum") | Manual edits still work |
+| `VITE_GOOGLE_TILES_KEY` | The photorealistic 3D city | A plain grid with the same pins and routes |
+| `GOOGLE_ROUTES_KEY` | Real street routes and transit | Straight-line estimates, marked "estimated" |
+| `MONGODB_URI`, `MONGODB_DB` | Keeping trips after a restart | Trips live in server memory |
+| `CONTACT_EMAIL` | A polite User-Agent for Nominatim and Wikipedia | Requests go out without a contact address |
+| `DAILY_TRIP_LIMIT` | Plans and typed changes per visitor per day (default 20, `0` = off) | |
+| `DAILY_TILE_SESSIONS` | 3D map loads per device per day (default 50) | |
 
-- Each page load that shows the 3D city counts as one session. After `DAILY_TILE_SESSIONS` sessions on a device in a day, tiles stop loading until the next day. The count lives in the browser's localStorage.
-- Tile settings are applied once and never changed per frame. Changing tileset settings every frame makes the renderer reload the city again and again.
-- Rendering pauses while the tab is hidden, and phones get a lighter quality preset.
+`VITE_` settings are built into the web page, so only the Tiles key (which is restricted to your site) has that prefix. Every other key stays on the server.
 
-## Routes (Google Routes API)
+## Costs
 
-1. Enable the **Routes API** in the same or another Google Cloud project.
-2. Create a separate key. Under API restrictions allow only the Routes API. This key stays on the server, so do not add referrer restrictions and never prefix it with `VITE_`.
-3. Put it in `.env` as `GOOGLE_ROUTES_KEY` and restart `npm run dev`.
-4. Set a daily quota cap for the Routes API too.
+| Service | Cost |
+| --- | --- |
+| Wikipedia, OpenStreetMap (Nominatim, Overpass), Open-Meteo | Free, no account |
+| MongoDB Atlas M0 cluster | Free |
+| Google Map Tiles and Routes | A free monthly allowance per API; a billing account with a card is required. Light personal use normally stays inside it. See https://mapsplatform.google.com/pricing |
+| OpenAI | Pay per use from prepaid credit. A plan is usually 2 calls (up to 6 with Critic revisions); with a small model that is around a cent or less. A typed change is 1 small call |
 
-Every Routes request sends a field mask, so Google returns (and bills) only the fields we use. Answers are cached for a day. Rate limits (429) and server errors are retried with backoff, up to 3 tries.
+Set caps before you start:
 
-Without a key, or when Google fails or finds no route, each leg becomes a straight-line estimate: the distance times a detour factor at a typical speed for the mode. These legs are dashed on the map and marked "Estimated" in the card.
+- **OpenAI:** a monthly budget at https://platform.openai.com/settings/organization/limits, and turn off auto recharge.
+- **Google:** a budget alert (or spend cap) at https://console.cloud.google.com/billing/budgets, and lower daily quotas for each API if your account allows it.
 
-When the trip's travel mode is "auto", each leg picks walking, transit, or driving from its distance and the budget.
+The app guards cost too. It caches every upstream answer, and routes are cached for a day. It caps 3D sessions per device and plans per visitor. It never changes tile settings inside the render loop, pauses rendering in hidden tabs, and uses lighter quality on phones. The tests never call a paid API.
 
-With a key, the Router also asks for a route matrix (`computeRouteMatrix`) for each day to find the best visiting order. Without one, the order comes from the same straight-line estimates.
+## Setting up the keys
 
-## Planning a trip (OpenAI)
+### Google Map Tiles (3D city)
 
-Fill in the form on the home page and press **Plan my trip**. A fixed crew builds the plan, and each member shows up as a card while it works:
+1. At https://console.cloud.google.com create a project and a billing account.
+2. Enable the **Map Tiles API**: https://console.cloud.google.com/apis/library/tile.googleapis.com
+3. Create an API key at https://console.cloud.google.com/apis/credentials. Restrict it to **Websites** `http://localhost:5173/*` (add your real site later) and to the **Map Tiles API** only.
+4. Put it in `.env` as `VITE_GOOGLE_TILES_KEY` and restart `npm run dev`.
+
+If the tiles fail, the map shows why: missing key, API not enabled, site not allowed, and so on.
+
+### Google Routes (optional)
+
+1. Enable the **Routes API**: https://console.cloud.google.com/apis/library/routes.googleapis.com
+2. Create a second key. No website restriction (it is only used by the server), API restriction **Routes API** only.
+3. Put it in `.env` as `GOOGLE_ROUTES_KEY`.
+
+Every Routes request sends a field mask, so Google returns and bills only the fields used. With a key, each day's visiting order also uses a route matrix. Rate limits and server errors are retried with backoff. When routing fails, a leg falls back to a straight-line estimate at a typical speed.
+
+### OpenAI
+
+1. Add prepaid credit at https://platform.openai.com/settings/organization/billing (no plan or subscription needed).
+2. Create a key at https://platform.openai.com/api-keys and put it in `OPENAI_API_KEY`.
+3. Pick models your account can use (https://platform.openai.com/docs/models) for `LLM_MODEL_SCOUT`, `LLM_MODEL_CRITIC` and `LLM_MODEL_FAST`. A small reasoning model works well for the first two, and a small fast model for the third.
+
+### MongoDB Atlas (keep trips)
+
+1. Create a free **M0** cluster at https://cloud.mongodb.com (you can skip the sample dataset).
+2. **Database Access:** add a database user with a password (letters and numbers are safest).
+3. **Network Access:** add your IP address.
+4. **Connect, Drivers:** copy the string. It has the form `mongodb+srv://USER:PASSWORD@cluster.xxxxx.mongodb.net/?appName=...`. Fill in both the user and the password, without `< >`, and put it in `MONGODB_URI`.
+
+With a database, upstream answers are cached there as well, and MongoDB deletes old ones on its own.
+
+## Planning a trip
+
+On the home page, fill in the city, days, hours, pace, how you get around, who is going, budget, meals, diet, interests, must-see places and an optional starting point and start date. Then press **Plan my trip**. The 3D city loads behind the crew, and each crew member lights up as it works:
 
 | Member | Kind | Job |
 | --- | --- | --- |
-| Surveyor | code | Finds the city, the start point and each must-see place (Nominatim) |
+| Surveyor | code | Finds the city, the starting point and each must-see place (Nominatim) |
 | Librarian | code | Collects notable places nearby from Wikipedia and drops streets, districts, stations, people and events |
-| Scout | AI | Picks the places that fit the request, only from that list or the must-see places |
-| Verifier | code | Keeps a pick only if it is a real article with coordinates inside the trip area, and adds photos with credits |
+| Scout | AI | Picks the places that fit, only from that list or your must-see places |
+| Verifier | code | Keeps a pick only if it is a real article inside the trip area, and adds a credited photo |
 | Planner | code | Keeps the best stops (must-see always) and groups them into compact days |
-| Router | code | Finds the best visiting order and the legs between stops |
+| Router | code | Finds the best visiting order and the travel between stops |
 | Food finder | code | Adds lunch and dinner near the right stops, and a place to stay (OpenStreetMap) |
 | Timekeeper | code | Sets visit lengths and times, and drops the least important stop when a day runs long |
-| Forecaster | code | Checks the Open-Meteo forecast when you give a start date within the next 16 days |
-| Critic | AI | Reviews the plan for what numbers cannot judge, and sends notes to the Scout or the Timekeeper |
+| Forecaster | code | Adds dates and weather notes when you give a start date within 16 days (Open-Meteo) |
+| Critic | AI | Reviews the plan for what numbers cannot judge and sends notes to the Scout or the Timekeeper |
 
-The AI agents never do math, write times, or invent places. Their answers are checked in code, and a reply that is cut off or invalid is retried once with a bigger token budget. The Critic's notes go back to the member it names, at most twice. Anything left over is shown as a note on that day.
+The AI agents never do math, write times or invent places. Their replies are checked in code and retried once with more room if cut off. The Critic's notes go back to the member it names, at most twice, and anything left over becomes a note on that day. Each day starts at your starting point ("S") when you give one. The server logs each plan's AI calls and token counts, never keys or your request.
 
-To enable it:
-
-1. Put your key in `.env` as `OPENAI_API_KEY`.
-2. Set `LLM_MODEL_SCOUT` and `LLM_MODEL_CRITIC` to models your key can use. The Scout benefits from a reasoning model.
-3. Set `CONTACT_EMAIL` so Nominatim and Wikipedia can reach you if something goes wrong. It goes in the User-Agent of those requests only.
-
-Without an OpenAI key, planning runs the free steps (Surveyor and Librarian), then stops at the Scout with a message saying which settings are missing. If the Critic is not set up, the plan is kept without a review.
-
-Each plan logs its LLM calls and token counts on the server, never the keys or the request itself. A plan usually makes 2 LLM calls, and up to 6 when the Critic asks for changes.
-
-Nominatim's usage policy does not allow search-as-you-type, so the city field suggests from a built-in list and the server looks the city up once, when planning starts.
-
-## Changing a trip
-
-Saved trips can be changed from the sidebar (or the Stops sheet on a phone). Sample trips opened with `?fixture=` are read-only.
-
-- **Edit stops** shows controls under each place: earlier and later (or drag the row on desktop), time spent there, move to another day, and remove. The starting point stays first and cannot be removed.
-- **Add a place** searches near the trip when you press Search, then adds the place where it adds the least walking. It gets a Wikipedia summary and photo when one exists.
-- **Describe a change** takes text like "drop the museum, slower morning". The fast model (`LLM_MODEL_FAST`) turns it into edits, and code checks each one before anything changes. New places go through the Scout and the Verifier, like a normal plan.
-
-Only the changed days are re-timed, and only legs between new neighbours are routed again. Your edits are kept even when a day runs long: you get a warning instead of lost stops. After each change a box lists what changed ("Removed Art Museum.", "Moved Castle Hill, now at 14:30."), with **Undo** to go back one step. The previous version is kept in the same saved document.
-
-## Saved trips (MongoDB)
-
-Every planned trip is saved as one document, and the home page lists recent trips to open or delete.
-
-Without `MONGODB_URI`, trips live in server memory and are gone after a restart. To keep them, use a free MongoDB Atlas cluster:
-
-1. Create a free (M0) cluster at mongodb.com/atlas.
-2. Under Database Access, add a database user with a password.
-3. Under Network Access, allow your IP address.
-4. Copy the connection string (Connect, Drivers). Put it in `.env` as `MONGODB_URI`, with your password filled in. `MONGODB_DB` sets the database name (default `tripplanner`).
-5. Restart `npm run dev`. http://localhost:5173/status says whether the database is reachable.
-
-With a database, upstream answers (places, Wikipedia, routes, weather) are also cached there, so repeat plans in the same city make fewer outside requests. MongoDB deletes old cache entries by itself.
-
-If the database is unreachable, the saved trips list shows an error with a retry, and a newly planned trip is still shown (with a note that it was not saved) instead of being lost.
+The city field suggests from a built-in list, because Nominatim's usage policy does not allow search-as-you-type. The city is looked up once, when planning starts.
 
 ## Using the trip view
 
-- The sidebar lists each day's stops with arrive and leave times and the travel between them. Pick a day tab, then a stop, to fly there. On a phone the list sits in a sheet at the bottom: tap **Stops** to open it.
-- **Next** and **Back** (or the right and left arrow keys) fly from stop to stop. After the last stop of a day, Next goes on to the next day.
-- **Overview** (or Escape) frames the whole day.
-- Click a pin to fly straight to it. Drag to orbit and scroll to zoom around the current stop.
-- With "reduce motion" turned on in your system settings, the camera cuts instead of flying.
-- Turn on **Fly along routes** to follow the street route between neighbouring stops instead of a direct arc.
-- The address keeps your place, for example `#day=2&stop=3`, so a reload or a shared link opens the same stop.
+- The sidebar lists each day's stops with times and the travel between them. On a phone it is a sheet at the bottom: tap **Stops**.
+- **Next** and **Back** (or the arrow keys) fly between stops. **Overview** (or Escape) frames the whole day. Click a pin to fly to it, drag to orbit, scroll to zoom.
+- **Fly along routes** makes the camera follow the street route instead of a direct arc. With "reduce motion" on, the camera cuts instead of flying.
+- Each card links to directions in Google Maps. **Open this day in Google Maps** gives the whole day as one route.
+- The address keeps your place (`#day=2&stop=3`), so a reload or a shared link opens the same stop.
 
-## Fixture mode
+## Changing a trip
 
-Saved trips in `fixtures/` open with no planning calls, which is handy for UI work: `http://localhost:5173/?fixture=paris-2day`. The home page links to it as a sample trip.
+Saved trips can be changed from the sidebar or the Stops sheet. Sample trips are read-only.
 
-The sample trip uses straight-line travel estimates (marked "estimated"). Its summaries come from Wikipedia and its photos from Wikimedia Commons, with the author and license shown on each photo.
+- **Edit stops** shows controls under each place: earlier and later (or drag the row on desktop), time spent there, move to another day, remove.
+- **Add a place** searches near the trip when you press Search, and puts the place where it adds the least walking.
+- **Describe a change** takes text like "drop the museum, slower morning". The fast model turns it into edits that code checks before applying. New places go through the Scout and the Verifier.
+
+Only the changed days are re-timed and only new legs routed. Your edits are kept even when a day runs long: you get a warning instead. After each change a box lists what changed, with **Undo** for one step back.
+
+## Saved trips
+
+Every plan is saved whole, and the home page lists recent trips to open or delete. If the database is unreachable, the list shows an error with a retry, and a new plan is still shown with a note that it was not saved.
+
+## Sample trips (fixture mode)
+
+Trips in `fixtures/` open with no planning calls: http://localhost:5173/?fixture=paris-2day. The home page links to it. The sample uses straight-line travel estimates, Wikipedia summaries and credited Wikimedia Commons photos.
+
+## Troubleshooting
+
+| What you see | What to do |
+| --- | --- |
+| "Your OpenAI account has no credit left" | Add credit on the OpenAI billing page (API credit, not ChatGPT Plus) |
+| "OpenAI does not know that model (404)" | Check the `LLM_MODEL_*` names on the OpenAI models page |
+| /status says the database is not reachable | Check `MONGODB_URI` has both user and password, and that your IP is allowed in Atlas |
+| The map shows a grid | No Tiles key, or today's 3D sessions are used up. A message on the map says which |
+| "This device has used its ... plans" | Wait for tomorrow (UTC), or change `DAILY_TRIP_LIMIT` |
+| A port is in use | Stop the leftover node processes (see Quick start) |
+
+## Deploying
+
+The project is ready for one Vercel function (`api/index.ts` sends every `/api` request to the same server code), but it has not been deployed or tested there, and there is no `vercel.json` yet. Before a public deploy:
+
+- add the site's address to the Tiles key's allowed websites;
+- set all settings in the hosting provider, not in files;
+- set a longer function timeout for planning, and check that the progress stream is not buffered;
+- replace the text "Google" credit on the map with the official Google Maps logo, as the Map Tiles policies require;
+- keep `DAILY_TRIP_LIMIT` on, and remove your keys when you no longer need the site.
+
+## Data credits
+
+- Map tiles and routes: Google. The map shows Google's data credits for the tiles on screen.
+- Places: © OpenStreetMap contributors (https://www.openstreetmap.org/copyright), via Nominatim and Overpass.
+- Summaries: Wikipedia. Photos: Wikimedia Commons, with the author and license on each photo.
+- Weather: Open-Meteo.
+
+The trip view repeats these credits under the stop list.
 
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Web app and API server with reload |
-| `npm run typecheck` | Type checks app, server, and tests |
-| `npm test` | Runs unit tests (no paid APIs are called) |
+| `npm run typecheck` | Type checks the app, server and tests |
+| `npm test` | Runs the tests (no paid APIs are called) |
 | `npm run build` | Type checks, builds the web app and the server |
 | `npm start` | Runs the built server |
 
 ## Project layout
 
 ```
-src/        React app (map, trip, plan-ui, lib)
-server/     HTTP server, routes, planning pipeline
-api/        Vercel entry that forwards to the server
-fixtures/   Saved sample trips for offline UI work
-tests/      Vitest tests
+src/
+  map/       3D tiles, pins, routes, camera (loaded only when a map is shown)
+  trip/      trip view, sidebar, stop card, editing
+  plan-ui/   home form, saved trips, planning crew
+  lib/       shared types, schemas, geo, polyline, API client
+server/
+  pipeline/  the planning crew, editing and replanning, prompts
+  upstream/  clients for outside services (Google Routes, Nominatim, Wikipedia, Overpass, Open-Meteo)
+  llm/       the one wrapper for all AI calls
+  store/     trips in MongoDB or memory
+  routes/    HTTP handlers
+api/         Vercel entry
+fixtures/    sample trips
+tests/       Vitest tests with mocked services
 ```

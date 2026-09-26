@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Trip } from '../lib/types'
 import { visitCount } from '../lib/stops'
 import { useNarrowScreen } from '../map/hooks'
-import { MapView, type Focus } from '../map/MapView'
+import { LazyMapView } from '../map/LazyMapView'
+import type { Focus } from '../map/MapView'
 import { dayColor } from './dayColors'
 import { formatMinutes } from './format'
 import { useFollowRoute } from './settings'
-import { DayPanel, DayTabs, FollowRouteToggle, TripHeading } from './Sidebar'
+import { DataCredits, DayPanel, DayTabs, FollowRouteToggle, TripHeading } from './Sidebar'
 import { StopCard } from './StopCard'
 import { useTripEditor } from './useTripEditor'
 import { backView, dayView, hashForView, nextView, sameView, stopView, viewFromHash, type View } from './tripNav'
@@ -138,12 +139,13 @@ export function TripScreen({ trip: initialTrip, notice, editable = false }: Prop
           <div className="sidebar-scroll">{dayPanel}</div>
           <footer className="sidebar-footer">
             <FollowRouteToggle value={followRoute} onChange={setFollowRoute} />
+            <DataCredits />
           </footer>
         </aside>
       )}
 
       <main className="trip-main">
-        <MapView
+        <LazyMapView
           center={trip.center}
           dayIndex={view.day}
           stops={day.stops}
@@ -214,6 +216,7 @@ export function TripScreen({ trip: initialTrip, notice, editable = false }: Prop
                 <div className="sheet-panel" id="sheet-panel">
                   {dayPanel}
                   <FollowRouteToggle value={followRoute} onChange={setFollowRoute} />
+                  <DataCredits />
                 </div>
               )}
             </section>

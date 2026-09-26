@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { cacheCollection, LayeredCache, MemoryCache, MongoCache, type Cache, type CacheDoc } from './cache.js'
 import { hasValue, type Env } from './env.js'
 import { ApiError, sendError, sendJson, type Req, type Res } from './http.js'
+import { clientAddress, DailyLimit, readTripLimit } from './rateLimit.js'
 import { createLlm } from './llm/openai.js'
 import { buildHealth } from './routes/health.js'
 import { handleLegs } from './routes/legs.js'
@@ -69,6 +70,8 @@ export function defaultDeps(env: Env): AppDeps {
 /** Builds the request handler used by both the local server and the Vercel function. */
 export function createApp(env: Env = process.env, deps: AppDeps = defaultDeps(env)) {
   const routes: Route[] = []
+  const tripLimit = new DailyLimit(readTripLimit(env))
+  const countUse = (req: Req) => () => tripLimit.take(clientAddress(req))
   const add = (method: string, path: string, handler: Handler) => {
     routes.push({ method, ...compile(path), handler })
   }
@@ -78,12 +81,12 @@ export function createApp(env: Env = process.env, deps: AppDeps = defaultDeps(en
     sendJson(res, 200, buildHealth(env, new Date(), databaseOk))
   })
   add('POST', '/api/routes/legs', (req, res) => handleLegs(req, res, deps))
-  add('POST', '/api/trips', (req, res) => handlePlanTrip(req, res, deps))
+  add('POST', '/api/trips', (req, res) => handlePlanTrip(req, res, deps, countUse(req)))
   add('GET', '/api/trips', (_req, res) => handleListTrips(res, deps))
   add('GET', '/api/trips/:id', (_req, res, params) => handleGetTrip(res, params.id ?? '', deps))
   add('DELETE', '/api/trips/:id', (_req, res, params) => handleDeleteTrip(res, params.id ?? '', deps))
   add('PATCH', '/api/trips/:id/days/:day', (req, res, params) => handlePatchDay(req, res, params.id ?? '', params.day ?? '', deps))
-  add('POST', '/api/trips/:id/replan', (req, res, params) => handleReplan(req, res, params.id ?? '', deps))
+  add('POST', '/api/trips/:id/replan', (req, res, params) => handleReplan(req, res, params.id ?? '', deps, countUse(req)))
   add('POST', '/api/trips/:id/undo', (_req, res, params) => handleUndo(res, params.id ?? '', deps))
   add('GET', '/api/places/search', (req, res) => handlePlaceSearch(req, res, deps))
 

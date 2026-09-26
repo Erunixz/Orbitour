@@ -9,7 +9,7 @@ import { StoreUnavailableError, type TripStore } from '../store/tripStore.js'
 export type TripRouteDeps = PipelineDeps & { store: TripStore }
 
 /** POST /api/trips: plans a trip and streams the crew's progress as Server-Sent Events. */
-export async function handlePlanTrip(req: Req, res: Res, deps: TripRouteDeps): Promise<void> {
+export async function handlePlanTrip(req: Req, res: Res, deps: TripRouteDeps, countUse: () => void = () => {}): Promise<void> {
   const request = parseBody(tripRequestSchema, await readJson(req))
   if (request.startDate && Number.isNaN(Date.parse(`${request.startDate}T00:00:00Z`))) {
     throw new ApiError(400, 'invalid_request', 'startDate is not a real date.')
@@ -17,6 +17,8 @@ export async function handlePlanTrip(req: Req, res: Res, deps: TripRouteDeps): P
   if (request.startTime >= request.endTime) {
     throw new ApiError(400, 'invalid_request', 'The day must end after it starts.')
   }
+  // Only valid requests count against the daily limit.
+  countUse()
 
   const stream = openSse(res)
   const controller = new AbortController()

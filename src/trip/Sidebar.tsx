@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { dayDirectionsUrl } from '../lib/mapsLink'
 import { isStart, stopLabel, visitCount } from '../lib/stops'
 import type { Day, Leg, Trip } from '../lib/types'
 import { usePrefersReducedMotion } from '../map/hooks'
@@ -215,6 +216,8 @@ export function DayPanel({ day, dayIndex, view, onOverview, onSelectStop, editor
         </ol>
       )}
 
+      <DayMapsLink day={day} />
+
       {editor?.editable && (
         <div className="edit-tools">
           <AddPlace editor={editor} day={dayIndex} />
@@ -223,6 +226,22 @@ export function DayPanel({ day, dayIndex, view, onOverview, onSelectStop, editor
       )}
       {editor && !editor.editable && <p className="muted edit-note">This is a sample trip, so it cannot be changed.</p>}
     </div>
+  )
+}
+
+/** The whole day in Google Maps, in the mode used most for its legs. */
+function DayMapsLink({ day }: { day: Day }) {
+  const counts = new Map<Leg['mode'], number>()
+  for (const leg of day.legs) counts.set(leg.mode, (counts.get(leg.mode) ?? 0) + 1)
+  const mode = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+  const url = dayDirectionsUrl(day.stops, mode)
+  if (!url) return null
+  return (
+    <p className="day-maps-link">
+      <a href={url} target="_blank" rel="noreferrer">
+        Open this day in Google Maps
+      </a>
+    </p>
   )
 }
 
@@ -247,5 +266,16 @@ export function FollowRouteToggle({ value, onChange }: { value: boolean; onChang
       <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
       Fly along routes
     </label>
+  )
+}
+
+/** Where the plan's data comes from. The map tiles carry their own credit on the map. */
+export function DataCredits() {
+  return (
+    <p className="data-credits">
+      Places: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>,
+      Wikipedia. Photos: Wikimedia Commons (credited on each photo). Weather:{' '}
+      <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. Routes and 3D map: Google.
+    </p>
   )
 }

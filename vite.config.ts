@@ -13,6 +13,12 @@ export default defineConfig(({ mode }) => {
       // Cost guard for the browser. A plain number, not a secret.
       __DAILY_TILE_SESSIONS__: JSON.stringify(env.DAILY_TILE_SESSIONS || '50'),
     },
+    build: {
+      // The 3D map (three.js and the tiles renderer, about 1.2 MB) is its own chunk,
+      // loaded only when a map is on screen (see src/map/LazyMapView.tsx). The rest
+      // of the app stays small. Splitting three.js further gains nothing.
+      chunkSizeWarningLimit: 1300,
+    },
     server: {
       port: 5173,
       proxy: {

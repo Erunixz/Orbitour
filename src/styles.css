@@ -1370,3 +1370,37 @@ button.danger {
   margin: 1rem 0.5rem 0;
   font-size: 0.8rem;
 }
+
+/* Map placeholder while the 3D code loads, and after a crash. */
+
+.map-loading,
+.map-failed {
+  background: linear-gradient(180deg, #d8e2ec, #c9d6e3);
+}
+
+.map-failed .map-notice button {
+  margin-top: 0.25rem;
+}
+
+.day-maps-link {
+  margin: 0.75rem 0.5rem 0;
+  font-size: 0.85rem;
+}
+
+.day-maps-link a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+}
+
+/* Data credits, required by the sources' terms. */
+.data-credits {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.data-credits a {
+  color: inherit;
+}

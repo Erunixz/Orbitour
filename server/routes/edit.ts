@@ -95,9 +95,10 @@ export async function handlePatchDay(req: Req, res: Res, id: string, dayParam: s
 }
 
 /** POST /api/trips/:id/replan: a typed change like "drop the museum, slower morning". */
-export async function handleReplan(req: Req, res: Res, id: string, deps: TripRouteDeps): Promise<void> {
+export async function handleReplan(req: Req, res: Res, id: string, deps: TripRouteDeps, countUse: () => void = () => {}): Promise<void> {
   const { text } = parseBody(replanBodySchema, await readJson(req))
   const trip = await load(id, deps)
+  countUse()
   await saveChange(res, trip, async () => (await replan(text, trip, deps)).trip, deps)
 }
 

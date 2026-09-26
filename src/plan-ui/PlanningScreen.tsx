@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ApiRequestError, streamPlan } from '../lib/api'
 import type { PlanEvent } from '../lib/planEvents'
 import type { Leg, Stop, Trip, TripRequest } from '../lib/types'
-import { MapView } from '../map/MapView'
+import { LazyMapView } from '../map/LazyMapView'
 import { CrewPanel } from './CrewPanel'
 import { initialPlanView, reducePlan, type StopPreview } from './planState'
 
@@ -81,7 +81,7 @@ export function PlanningScreen({ request, onDone, onBack }: Props) {
     <div className="planning-screen">
       <div className="planning-map">
         {center ? (
-          <MapView
+          <LazyMapView
             center={center}
             dayIndex={0}
             stops={stops}
