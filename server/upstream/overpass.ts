@@ -39,6 +39,12 @@ export type OverpassClient = {
   food(points: LatLon[], radiusM: number): Promise<OsmPlace[]>
   /** Named hotels, guest houses and hostels around a point, nearest first. */
   lodging(center: LatLon, radiusM: number): Promise<OsmPlace[]>
+  /**
+   * Places OpenStreetMap marks as worth visiting (museums, attractions,
+   * viewpoints, castles, monuments, parks, places of worship with a tourism or
+   * heritage tag...) that link to Wikidata. Nearest first.
+   */
+  attractions(center: LatLon, radiusM: number): Promise<OsmPlace[]>
 }
 
 const elementSchema = z.object({
@@ -77,6 +83,45 @@ export function lodgingQuery(center: LatLon, radiusM: number): string {
   return `[out:json][timeout:15];nwr["tourism"~"^(hotel|guest_house|hostel)$"]["name"]${around(center, radiusM)};out center 60;`
 }
 
+/** OSM tags that mark a place worth visiting. */
+const ATTRACTION_TAGS: [string, RegExp][] = [
+  ['tourism', /^(attraction|museum|gallery|viewpoint|zoo|aquarium|theme_park|artwork)$/],
+  ['historic', /^(?!(yes|memorial_plaque|boundary_stone|milestone|wayside_cross|district|street|railway_station)$)/],
+  ['leisure', /^(park|garden|nature_reserve)$/],
+  ['amenity', /^(place_of_worship|theatre|arts_centre|concert_hall|marketplace|fountain|planetarium)$/],
+  ['building', /^(cathedral|basilica|palace|castle)$/],
+  ['man_made', /^(tower|lighthouse|observatory)$/],
+  ['heritage', /./],
+]
+
+/**
+ * True when OpenStreetMap marks the place as worth visiting. A church or
+ * theatre alone is not enough: it must also carry a tourism or heritage tag,
+ * or be a cathedral or basilica.
+ */
+export function isAttraction(tags: Record<string, string>): boolean {
+  const hit = ATTRACTION_TAGS.some(([key, re]) => tags[key] !== undefined && re.test(tags[key]!))
+  if (!hit) return false
+  const everyday = ['place_of_worship', 'theatre', 'arts_centre', 'concert_hall'].includes(tags.amenity ?? '')
+  const special = /^(cathedral|basilica)$/.test(tags.building ?? '') || tags.tourism || tags.heritage || tags.historic
+  return !everyday || Boolean(special)
+}
+
+/** Box around a point, as Overpass wants it: south, west, north, east. */
+function bbox(p: LatLon, r: number): string {
+  const dLat = r / 111_320
+  const dLon = r / (111_320 * Math.cos((p.lat * Math.PI) / 180))
+  return [p.lat - dLat, p.lon - dLon, p.lat + dLat, p.lon + dLon].map((n) => n.toFixed(5)).join(',')
+}
+
+/**
+ * Everything linked to Wikidata inside a box. Filtering the tags in code is much
+ * faster than asking Overpass to do it: a few seconds instead of timing out.
+ */
+export function attractionsQuery(center: LatLon, radiusM: number): string {
+  return `[out:json][timeout:40][bbox:${bbox(center, radiusM)}];nwr["wikidata"];out center tags;`
+}
+
 type Deps = {
   userAgent: string
   cache: Cache
@@ -85,7 +130,7 @@ type Deps = {
 }
 
 export function createOverpass({ userAgent, cache, mirrors = OVERPASS_MIRRORS, retry = {} }: Deps): OverpassClient {
-  async function run(query: string, from: LatLon): Promise<OsmPlace[]> {
+  async function run(query: string, from: LatLon, timeoutMs = 20_000): Promise<OsmPlace[]> {
     for (const url of mirrors) {
       try {
         const res = await fetchWithRetry(
@@ -96,9 +141,12 @@ export function createOverpass({ userAgent, cache, mirrors = OVERPASS_MIRRORS, r
             body: new URLSearchParams({ data: query }).toString(),
           },
           // One try each: a busy mirror is better skipped than waited on.
-          { tries: 1, timeoutMs: 20_000, ...retry, service: 'overpass' },
+          { tries: 1, timeoutMs, ...retry, service: 'overpass' },
         )
-        return parseElements(await res.json(), from)
+        const body = (await res.json()) as { remark?: unknown }
+        // A timed-out query still answers 200, with no elements and a remark. Try the next mirror.
+        if (typeof body.remark === 'string' && /runtime error/i.test(body.remark)) continue
+        return parseElements(body, from)
       } catch (error) {
         // A bad query fails the same way on every mirror, so stop there.
         if (error instanceof UpstreamError && error.status === 400) throw error
@@ -113,6 +161,10 @@ export function createOverpass({ userAgent, cache, mirrors = OVERPASS_MIRRORS, r
       const key = cacheKey('osm-food', radiusM, points.map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join(';'))
       return cached(cache, key, TTL, () => run(foodQuery(points, radiusM), points[0]!))
     },
+    attractions: (center, radiusM) =>
+      cached(cache, cacheKey('osm-attractions', center.lat, center.lon, radiusM), 7 * DAY, () =>
+        run(attractionsQuery(center, radiusM), center, 45_000).then((places) => places.filter((p) => isAttraction(p.tags))),
+      ),
     lodging: (center, radiusM) =>
       cached(cache, cacheKey('osm-lodging', center.lat, center.lon, radiusM), TTL, () =>
         run(lodgingQuery(center, radiusM), center),

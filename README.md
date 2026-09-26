@@ -2,9 +2,11 @@
 
 A trip planner where the 3D city is the interface. Name a city and describe the trip, and a crew of code tools and two AI agents builds a day-by-day plan on real streets. Then move through it one stop at a time on photorealistic 3D tiles, and change it by hand or by typing what you want.
 
+- Start on a spinning globe that turns to your city, or from one of the example trips.
+- Your choices are strict: every stop must match an interest, "free" budget skips paid entry, and families get no long climbs.
 - Numbered pins on real rooftops, routes along the streets, one colour per day.
-- Next and Back fly the camera from stop to stop. A card shows the photo, times, why it fits, and the next leg.
-- Every place comes from a real source (Wikipedia or OpenStreetMap). All times and routes are worked out in code, never by the AI.
+- Next and Back fly the camera from stop to stop, pulling back to sweep around as the view turns. A card shows the photo, times, why it fits, and the next leg.
+- Every place is a verified tourist spot: tagged as worth visiting on OpenStreetMap, with a Wikipedia article, ranked by how many languages cover it (from Wikidata). All times and routes are worked out in code, never by the AI.
 - Edit stops, add places, type changes like "drop the museum, slower morning", and undo.
 - Trips are saved and can be reopened.
 
@@ -20,7 +22,7 @@ npm run dev
 
 This starts the web app at http://localhost:5173 and the API server at http://localhost:8787 (the web app forwards `/api` to it). Open http://localhost:5173/status to see which settings are set and whether the database is reachable.
 
-The app runs with no keys at all: you can open the sample trip and try the map on a plain grid. To plan trips you need an OpenAI key.
+The app runs with no keys at all: you can open a sample trip at http://localhost:5173/?fixture=paris-2day and try the map on a plain grid. To plan trips you need an OpenAI key.
 
 On Windows, stopping `npm run dev` with Ctrl+C can leave node running. If the next start says a port is in use, run in PowerShell:
 
@@ -50,7 +52,7 @@ All settings live in `.env`, which git ignores. Never put keys anywhere else.
 
 | Service | Cost |
 | --- | --- |
-| Wikipedia, OpenStreetMap (Nominatim, Overpass), Open-Meteo | Free, no account |
+| Wikipedia, Wikidata, OpenStreetMap (Nominatim, Overpass), Open-Meteo | Free, no account |
 | MongoDB Atlas M0 cluster | Free |
 | Google Map Tiles and Routes | A free monthly allowance per API; a billing account with a card is required. Light personal use normally stays inside it. See https://mapsplatform.google.com/pricing |
 | OpenAI | Pay per use from prepaid credit. A plan is usually 2 calls (up to 6 with Critic revisions); with a small model that is around a cent or less. A typed change is 1 small call |
@@ -141,7 +143,7 @@ Every plan is saved whole, and the home page lists recent trips to open or delet
 
 ## Sample trips (fixture mode)
 
-Trips in `fixtures/` open with no planning calls: http://localhost:5173/?fixture=paris-2day. The home page links to it. The sample uses straight-line travel estimates, Wikipedia summaries and credited Wikimedia Commons photos.
+Trips in `fixtures/` open with no planning calls: http://localhost:5173/?fixture=paris-2day. The sample uses straight-line travel estimates, Wikipedia summaries and credited Wikimedia Commons photos.
 
 ## Troubleshooting
 

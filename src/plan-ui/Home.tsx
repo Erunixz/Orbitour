@@ -1,17 +1,14 @@
-import { useId, useState, type FormEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Budget, Meal, Pace, Party, TravelMode, TripRequest } from '../lib/types'
+import { ErrorBoundary } from '../ErrorBoundary'
+import { coordsFor, CITY_COORDS, EXAMPLES, POPULAR_CITIES, useWikiPhoto, type Example } from './examples'
 import { SavedTrips } from './SavedTrips'
 
-// Home: describe the trip. City names are suggested from a built-in list;
-// the server looks the city up once, when planning starts.
+// Home: a globe, example trips to start from, and the form to describe the trip.
+// City names are suggested from a built-in list; the server looks the city up
+// once, when planning starts.
 
-const POPULAR_CITIES = [
-  'Amsterdam', 'Athens', 'Bangkok', 'Barcelona', 'Berlin', 'Boston', 'Budapest', 'Buenos Aires', 'Cape Town',
-  'Chicago', 'Copenhagen', 'Dubai', 'Dublin', 'Edinburgh', 'Florence', 'Hong Kong', 'Istanbul', 'Kyoto', 'Lisbon',
-  'London', 'Los Angeles', 'Madrid', 'Melbourne', 'Mexico City', 'Montreal', 'Munich', 'New York', 'Paris', 'Prague',
-  'Rio de Janeiro', 'Rome', 'San Francisco', 'Seoul', 'Singapore', 'Stockholm', 'Sydney', 'Tokyo', 'Toronto',
-  'Venice', 'Vienna',
-]
+const Globe = lazy(() => import('./Globe'))
 
 const INTERESTS = ['art', 'history', 'architecture', 'museums', 'parks', 'views', 'markets', 'churches', 'music', 'shopping', 'food', 'nightlife']
 
@@ -32,16 +29,17 @@ export const defaultRequest: TripRequest = {
 type Props = {
   initial: TripRequest
   onPlan: (request: TripRequest) => void
-  /** Link to open the sample trip without planning. */
-  sampleHref: string
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-export function Home({ initial, onPlan, sampleHref }: Props) {
+export function Home({ initial, onPlan }: Props) {
   const [form, setForm] = useState<TripRequest>(initial)
   const [mustSeeText, setMustSeeText] = useState(initial.mustSee.join('\n'))
   const [error, setError] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [globeReady, setGlobeReady] = useState(false)
+  const markGlobeReady = useCallback(() => setGlobeReady(true), [])
   const set = <K extends keyof TripRequest>(key: K, value: TripRequest[K]) => setForm((f) => ({ ...f, [key]: value }))
 
   const toggle = <T extends string>(list: T[], item: T) => (list.includes(item) ? list.filter((i) => i !== item) : [...list, item])
@@ -61,18 +59,82 @@ export function Home({ initial, onPlan, sampleHref }: Props) {
     onPlan(request)
   }
 
+  const focus = coordsFor(form.city)
+  const markers = useMemo(
+    () => EXAMPLES.map((e) => ({ id: e.id, label: e.request.city, ...CITY_COORDS[e.request.city]! })),
+    [],
+  )
+
+  const applyExample = (example: Example) => {
+    setForm({ ...defaultRequest, ...form, startFrom: undefined, diet: undefined, ...example.request, mustSee: [] })
+    setMustSeeText('')
+    setError(null)
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <main className="home">
-      <header className="home-header">
-        <p className="brand">Orbitour</p>
-        <h1>Plan a trip on a 3D map</h1>
-        <p className="muted">
-          Name a city and say what you like. A crew of code tools and two AI agents builds a day-by-day plan on real
-          streets, which you explore one stop at a time.
-        </p>
-      </header>
+      <section className="hero">
+        <div className="hero-text">
+          <p className="brand">Orbitour</p>
+          <h1>Plan a trip, then fly through it in 3D</h1>
+          <p className="hero-lead">
+            Name a city and say what you like. A crew of code tools and two AI agents builds a day-by-day plan on real
+            streets, and you explore it stop by stop over a photorealistic city.
+          </p>
+          <div className="hero-actions">
+            <button type="button" className="plan-button" onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+              Start planning
+            </button>
+          </div>
+          <p className="hero-place" aria-live="polite">
+            {focus ? `Heading to ${focus.label}` : 'Drag the globe, or pick a glowing city'}
+          </p>
+        </div>
+        <div className="hero-globe">
+          {!globeReady && <div className="globe-fallback" />}
+          <ErrorBoundary name="globe" fallback={() => null}>
+            <Suspense fallback={null}>
+              <Globe
+                onReady={markGlobeReady}
+                markers={markers}
+                focus={focus}
+                onPick={(id) => {
+                  const example = EXAMPLES.find((e) => e.id === id)
+                  if (example) applyExample(example)
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+      </section>
 
-      <form className="card plan-form" onSubmit={submit} noValidate>
+      <section className="home-section" aria-labelledby="examples-title">
+        <h2 id="examples-title">Start from an example</h2>
+        <p className="muted">Pick one to fill in the form, then change anything you like.</p>
+        <ul className="examples">
+          {EXAMPLES.map((example) => (
+            <li key={example.id}>
+              <ExampleCard example={example} active={form.city === example.request.city} onUse={() => applyExample(example)} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="home-section steps" aria-label="How it works">
+        <Step n={1} title="Describe it">
+          City, days, pace, budget and what you love. Your choices are strict rules for the plan.
+        </Step>
+        <Step n={2} title="The crew plans">
+          Real places from Wikipedia and OpenStreetMap, checked, timed and routed in code.
+        </Step>
+        <Step n={3} title="Fly through it">
+          Next and Back glide the camera over the city from stop to stop.
+        </Step>
+      </section>
+
+      <h2 className="form-title">Your trip</h2>
+      <form ref={formRef} className="card plan-form" onSubmit={submit} noValidate>
         <Field label="City">
           {(id) => (
             <>
@@ -230,9 +292,53 @@ export function Home({ initial, onPlan, sampleHref }: Props) {
       <SavedTrips />
 
       <p className="muted home-foot">
-        Want a look first? <a href={sampleHref}>Open a sample trip</a>. <a href="/status">Server status</a>
+        <a href="/status">Server status</a>
+        <br />
+        Globe imagery: NASA Blue Marble. Photos: Wikipedia.
       </p>
     </main>
+  )
+}
+
+function ExampleCard({ example, active, onUse }: { example: Example; active: boolean; onUse: () => void }) {
+  const photo = useWikiPhoto(example.photoArticle)
+  const [broken, setBroken] = useState(false)
+  const { request } = example
+  return (
+    <button type="button" className={`example${active ? ' active' : ''}`} onClick={onUse}>
+      <span className="example-photo">
+        {photo && (
+          <img
+            src={broken ? photo.fallback : photo.url}
+            alt=""
+            loading="lazy"
+            onError={() => setBroken(true)}
+          />
+        )}
+        <span className="example-city">{request.city}</span>
+      </span>
+      <span className="example-body">
+        <span className="example-title">{example.title}</span>
+        <span className="example-blurb">{example.blurb}</span>
+        <span className="example-tags">
+          {request.interests?.map((i) => (
+            <span key={i} className="tag">
+              {i}
+            </span>
+          ))}
+        </span>
+      </span>
+    </button>
+  )
+}
+
+function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  return (
+    <div className="step">
+      <span className="step-n">{n}</span>
+      <h3>{title}</h3>
+      <p className="muted">{children}</p>
+    </div>
   )
 }
 

@@ -15,6 +15,7 @@ import { createNominatim } from './upstream/nominatim.js'
 import { createWeather } from './upstream/openMeteo.js'
 import { createOverpass } from './upstream/overpass.js'
 import { userAgent } from './upstream/politeness.js'
+import { createWikidata } from './upstream/wikidata.js'
 import { createWikipedia } from './upstream/wikipedia.js'
 
 type Handler = (req: Req, res: Res, params: Record<string, string>) => Promise<void> | void
@@ -58,6 +59,7 @@ export function defaultDeps(env: Env): AppDeps {
     matrix: google,
     nominatim: createNominatim({ userAgent: agent, cache }),
     wikipedia: createWikipedia({ userAgent: agent, cache }),
+    wikidata: createWikidata({ userAgent: agent, cache }),
     overpass: createOverpass({ userAgent: agent, cache }),
     weather: createWeather({ cache }),
     llm: createLlm(env, { log }),

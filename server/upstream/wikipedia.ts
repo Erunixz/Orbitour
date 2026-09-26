@@ -23,6 +23,8 @@ export type WikiPage = LatLon & {
   length: number
   /** Views over the last month, when Wikipedia reports them. */
   views: number | null
+  /** Wikidata id like "Q243", when the article has one. */
+  wikidata?: string
 }
 
 export type WikiArticle = LatLon & {
@@ -38,6 +40,8 @@ export type WikiArticle = LatLon & {
 
 export type WikipediaClient = {
   nearby(center: LatLon, radiusM: number, limit: number): Promise<WikiPage[]>
+  /** Page facts (place, description, size, views) for exact titles. Pages without a place are left out. */
+  pages(titles: string[]): Promise<WikiPage[]>
   /** Resolves titles (following redirects). Missing, placeless or disambiguation pages map to null. */
   lookup(titles: string[]): Promise<Map<string, WikiArticle | null>>
   /** Titles matching free text, best first. */
@@ -145,6 +149,30 @@ export function trimSummary(text: string, maxChars = 280): string {
   return out.length > maxChars + 80 ? `${out.slice(0, maxChars).replace(/\s+\S*$/, '')}...` : out
 }
 
+/** Pages with a place from a geosearch or titles query. Disambiguation pages are left out. */
+function toPages(body: unknown): WikiPage[] {
+  const parsed = nearbySchema.safeParse(body)
+  if (!parsed.success) return []
+  return (parsed.data.query?.pages ?? []).flatMap((p): WikiPage[] => {
+    const c = p.coordinates?.[0]
+    if (!c || p.pageprops?.disambiguation !== undefined) return []
+    const counts = Object.values(p.pageviews ?? {}).filter((n): n is number => typeof n === 'number')
+    const wikidata = p.pageprops?.wikibase_item
+    return [
+      {
+        pageId: p.pageid,
+        title: p.title,
+        lat: c.lat,
+        lon: c.lon,
+        description: p.description ?? '',
+        length: p.length ?? 0,
+        views: counts.length > 0 ? counts.reduce((a, b) => a + b, 0) : null,
+        ...(typeof wikidata === 'string' ? { wikidata } : {}),
+      },
+    ]
+  })
+}
+
 type Deps = {
   userAgent: string
   cache: Cache
@@ -176,28 +204,34 @@ export function createWikipedia({ userAgent, cache, gate = new RateGate(250), re
           prop: 'coordinates|description|info|pageprops|pageviews',
           // Without this, coordinates come back for only 10 pages.
           colimit: 'max',
-          ppprop: 'disambiguation',
+          ppprop: 'disambiguation|wikibase_item',
           pvipdays: '30',
         })
-        const parsed = nearbySchema.safeParse(body)
-        if (!parsed.success) return []
-        return (parsed.data.query?.pages ?? []).flatMap((p): WikiPage[] => {
-          const c = p.coordinates?.[0]
-          if (!c || p.pageprops?.disambiguation !== undefined) return []
-          const counts = Object.values(p.pageviews ?? {}).filter((n): n is number => typeof n === 'number')
-          return [
-            {
-              pageId: p.pageid,
-              title: p.title,
-              lat: c.lat,
-              lon: c.lon,
-              description: p.description ?? '',
-              length: p.length ?? 0,
-              views: counts.length > 0 ? counts.reduce((a, b) => a + b, 0) : null,
-            },
-          ]
-        })
+        return toPages(body)
       })
+    },
+
+    async pages(titles) {
+      const unique = [...new Set(titles.map((t) => t.trim()).filter(Boolean))]
+      const out: WikiPage[] = []
+      for (let i = 0; i < unique.length; i += 50) {
+        const batch = unique.slice(i, i + 50)
+        out.push(
+          ...(await cached(cache, cacheKey('wiki-pages', batch.join('|')), TTL, async () =>
+            toPages(
+              await get(WIKI_API, {
+                titles: batch.join('|'),
+                redirects: '1',
+                prop: 'coordinates|description|info|pageprops|pageviews',
+                colimit: 'max',
+                ppprop: 'disambiguation|wikibase_item',
+                pvipdays: '30',
+              }),
+            ),
+          )),
+        )
+      }
+      return out
     },
 
     async lookup(titles) {

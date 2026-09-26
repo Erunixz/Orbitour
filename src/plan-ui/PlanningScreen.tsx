@@ -76,6 +76,7 @@ export function PlanningScreen({ request, onDone, onBack }: Props) {
 
   const problem = view.failure?.message ?? connection
   const center = view.area?.center
+  const radiusM = view.area?.radiusM ?? 3000
 
   return (
     <div className="planning-screen">
@@ -87,7 +88,7 @@ export function PlanningScreen({ request, onDone, onBack }: Props) {
             stops={stops}
             legs={legs}
             color="#2f6fed"
-            focus={{ kind: 'overview' }}
+            focus={{ kind: 'orbit', radiusM }}
             onSelectStop={noop}
             bottomInsetPx={0}
             followRoute={false}

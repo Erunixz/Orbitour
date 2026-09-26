@@ -41,7 +41,7 @@ export function dietTags(diet: string | undefined): string[] {
   return DIET_TAGS.filter(([re]) => re.test(diet)).map(([, tag]) => tag)
 }
 
-const fitsDiet = (place: OsmPlace, tags: string[]) => tags.some((t) => place.tags[t] === 'yes' || place.tags[t] === 'only')
+export const fitsDiet = (place: OsmPlace, tags: string[]) => tags.some((t) => place.tags[t] === 'yes' || place.tags[t] === 'only')
 
 /** Best food place: diet first, then the preferred kind, then the nearest. Never one already used. */
 export function pickFood(places: OsmPlace[], diet: string | undefined, prefer: 'restaurant' | 'cafe', used: Set<string>): OsmPlace | null {
@@ -158,6 +158,10 @@ export async function runFood(
       if (!place) continue
       used.add(place.osmId)
       chosen.set(slot, foodStop(place, slot.meal, anchor.name))
+      const tags = dietTags(request.diet)
+      if (tags.length > 0 && !fitsDiet(place, tags)) {
+        warnings[slot.day]!.push(`${place.name} is not marked as ${request.diet!.trim()} on the map. Check the menu, or swap it.`)
+      }
       s.progress(`Day ${slot.day + 1} ${slot.meal}: ${place.name}.`)
       break
     }

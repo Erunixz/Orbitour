@@ -3,8 +3,11 @@ import { tripSchema } from '../src/lib/schemas'
 import { PlanError } from '../server/pipeline/context'
 import { MAX_REVISIONS, planTrip } from '../server/pipeline/pipeline'
 import type { ScoutInput } from '../server/pipeline/prompts/scout'
+import { buildPool, verifiedPool } from '../server/pipeline/candidates'
 import { runVerifier } from '../server/pipeline/verifier'
-import { at, baseRequest, CENTER, fakeDeps, fakeLlm, fakeNominatim, fakeOverpass, fakeWikipedia, place, recorder, scoutPicks } from './fakes'
+import type { OsmPlace } from '../server/upstream/overpass'
+import type { WikiPage } from '../server/upstream/wikipedia'
+import { at, baseRequest, CENTER, fakeDeps, fakeLlm, fakeNominatim, fakeOverpass, fakeWikidata, fakeWikipedia, pages, place, recorder, scoutPicks } from './fakes'
 
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3))
 
@@ -227,11 +230,60 @@ describe('verifier', () => {
     const { events, emit } = recorder()
     const survey = { label: 'Testville', center: CENTER, radiusM: 5000, startFrom: null, mustSee: [] }
     const picks = scoutPicks(['Old Cathedral', 'Old Cathedral']).picks.map((p) => ({ ...p, kind: 'sight' as const }))
-    const { stops, rejected } = await runVerifier(picks, [], survey, fakeDeps({ wikipedia }), emit)
+    const { stops, rejected } = await runVerifier(picks, buildPool(pages, CENTER, 5000), survey, fakeDeps({ wikipedia }), emit)
     expect(stops).toHaveLength(1)
     expect(rejected[0]?.reason).toMatch(/same place/)
     expect(events.filter((e) => e.data?.rejected)).toHaveLength(1)
     // One batched lookup for all picks.
     expect(wikipedia.lookups).toHaveLength(1)
+  })
+})
+
+describe('verified tourist places', () => {
+  const tagged = (title: string, tags: Record<string, string>): OsmPlace => {
+    const page = pages.find((p) => p.title === title)!
+    return { osmId: `node/${page.pageId}`, name: title, lat: page.lat, lon: page.lon, url: '', tags: { ...tags, wikidata: `Q${page.pageId}` } }
+  }
+  const osm = [
+    tagged('Old Cathedral', { amenity: 'place_of_worship', building: 'cathedral', tourism: 'attraction' }),
+    tagged('Castle Hill', { historic: 'castle' }),
+    tagged('Art Museum', { tourism: 'museum' }),
+    tagged('Clock Tower', { man_made: 'tower', tourism: 'attraction' }),
+    tagged('River Garden', { leisure: 'garden' }),
+    tagged('Tile Museum', { tourism: 'museum' }),
+    tagged('Harbour Market', { amenity: 'marketplace', tourism: 'attraction' }),
+    tagged('Lighthouse Viewpoint', { tourism: 'viewpoint' }),
+  ]
+
+  it('keeps only places tagged on OpenStreetMap, with their OSM kind', () => {
+    const byQid = new Map(pages.map((p) => [`Q${p.pageId}`, p]))
+    const facts = new Map(pages.map((p) => [`Q${p.pageId}`, { enTitle: p.title, sitelinks: 10 }]))
+    const pool = verifiedPool(osm.slice(0, 3), byQid, facts, CENTER, 5000)
+    expect(pool.map((c) => c.title).sort()).toEqual(['Art Museum', 'Castle Hill', 'Old Cathedral'])
+    expect(pool.find((c) => c.title === 'Castle Hill')).toMatchObject({ kind: 'sight', osmType: 'castle', sitelinks: 10 })
+    expect(pool.find((c) => c.title === 'Old Cathedral')?.osmType).toBe('cathedral')
+  })
+
+  it('drops little-known places when there are enough famous ones', () => {
+    const byQid = new Map<string, WikiPage>(pages.map((p) => [`Q${p.pageId}`, { ...p, views: 10 }]))
+    const many = Array.from({ length: 25 }, (_, i) => ({ ...osm[0]!, tags: { ...osm[0]!.tags, wikidata: `Q${1000 + i}` } }))
+    for (let i = 0; i < 25; i++) byQid.set(`Q${1000 + i}`, { ...pages[0]!, pageId: 1000 + i, title: `Famous ${i}` })
+    const facts = new Map<string, { enTitle: string; sitelinks: number }>([...byQid].map(([q, p]) => [q, { enTitle: p.title, sitelinks: q.startsWith('Q10') && q.length === 5 ? 30 : 1 }]))
+    const pool = verifiedPool([...osm, ...many], byQid, facts, CENTER, 5000)
+    expect(pool.every((c) => c.title.startsWith('Famous'))).toBe(true)
+  })
+
+  it('plans from verified places and tells the Scout how famous each is', async () => {
+    const overpass = { ...fakeOverpass(), attractions: async () => osm }
+    const llm = fakeLlm({ scout: [scoutPicks(['Old Cathedral', 'Castle Hill', 'Main Street', 'Central Station'])], critic: [{ ok: true, issues: [] }] })
+    const { events, emit } = recorder()
+    await planTrip({ ...baseRequest, days: 1 }, fakeDeps({ llm, overpass, wikidata: fakeWikidata({ 'Castle Hill': 80 }) }), emit)
+    const input = llm.inputs.scout![0] as ScoutInput
+    expect(input.pool.map((p) => p.title)).not.toContain('Main Street')
+    expect(input.pool.find((p) => p.title === 'Castle Hill')).toMatchObject({ fame: 80 })
+    expect(input.pool.find((p) => p.title === 'Castle Hill')?.about).toMatch(/^castle\./)
+    const rejected = events.flatMap((e) => (e.data?.rejected ? [e.data.rejected.title] : []))
+    expect(rejected).toEqual(expect.arrayContaining(['Main Street', 'Central Station']))
+    expect(events.some((e) => e.stage === 'candidates' && /verified tourist places/.test(e.message))).toBe(true)
   })
 })

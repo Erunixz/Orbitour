@@ -4,7 +4,7 @@ import type { Trip, TripRequest } from './lib/types'
 import { defaultRequest, Home } from './plan-ui/Home'
 import { PlanningScreen } from './plan-ui/PlanningScreen'
 import { StatusPage } from './StatusPage'
-import { DEFAULT_FIXTURE, useFixture } from './trip/fixtures'
+import { useFixture } from './trip/fixtures'
 import { TripScreen } from './trip/TripScreen'
 
 // Pages: "/" plans a trip, "/trip/<id>" opens a saved one, "?fixture=<name>"
@@ -73,7 +73,7 @@ export function App() {
   }
 
   if (planning) return <PlanningScreen request={planning} onDone={done} onBack={() => setPlanning(null)} />
-  return <Home initial={readDraft()} onPlan={plan} sampleHref={`/?fixture=${DEFAULT_FIXTURE}`} />
+  return <Home initial={readDraft()} onPlan={plan} />
 }
 
 function FixtureTrip({ name }: { name: string }) {

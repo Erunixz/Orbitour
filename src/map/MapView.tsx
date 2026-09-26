@@ -1,14 +1,14 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import type { PerspectiveCamera, Vector3 } from 'three'
+import { Vector3, type PerspectiveCamera } from 'three'
 import type { TilesRenderer as TilesRendererImpl } from '3d-tiles-renderer/three'
 import { toDeg, toRad } from '../lib/geo'
 import { decodePolyline } from '../lib/polyline'
 import { pointBeforeEnd } from '../lib/routePath'
 import type { LatLon, Leg, Stop } from '../lib/types'
 import { CameraRig } from './CameraRig'
-import { headingBetween, makeFlightPath, overviewPose, stopPose, type FlightPath } from './cameraMath'
+import { headingBetween, makeFlightPath, orbitAround, orbitPose, overviewPose, stopPose, type FlightPath } from './cameraMath'
 import { GoogleTiles } from './GoogleTiles'
 import { usePageVisible, usePrefersReducedMotion } from './hooks'
 import { PinLayer, PinProjector, type PinRefs } from './Pins'
@@ -21,7 +21,11 @@ import { describe, diagnoseTilesKey, type TilesDiagnosis } from './tilesKey'
 import { heightFor, medianOf, useGroundHeights, useSurfaceHeights, type Heights } from './useGroundHeights'
 import { ViewInset } from './ViewInset'
 
-export type Focus = { kind: 'overview' } | { kind: 'stop'; index: number }
+export type Focus =
+  | { kind: 'overview' }
+  | { kind: 'stop'; index: number }
+  /** Far out over the trip area, circling slowly. Used while planning. */
+  | { kind: 'orbit'; radiusM: number }
 
 type Props = {
   center: LatLon
@@ -95,7 +99,7 @@ export function MapView(props: Props) {
         gl={{ antialias: true, logarithmicDepthBuffer: true }}
         camera={{ fov: 50, near: 1, far: 1_000_000, position: [0, 3000, -3000] }}
       >
-        <color attach="background" args={['#c9d6e3']} />
+        <color attach="background" args={['#0a1428']} />
         <ViewInset bottomPx={bottomInsetPx} />
         {showTiles ? (
           <GoogleTiles
@@ -108,7 +112,7 @@ export function MapView(props: Props) {
             onRootError={handleRootError}
           />
         ) : (
-          <gridHelper args={[20_000, 80, '#8aa0b6', '#aebfd0']} />
+          <gridHelper args={[20_000, 80, '#2c4a80', '#1a2d52']} />
         )}
         <Scene
           frame={frame}
@@ -184,20 +188,24 @@ function Scene(props: SceneProps) {
         points: routePoints[i] ?? [],
         estimated: path.leg.estimated,
         // Leg i arrives at stop i + 1. Highlight the one arriving at the current stop.
-        state: focus.kind === 'overview' ? 'normal' : i === focus.index - 1 ? 'active' : 'dim',
+        state: focus.kind !== 'stop' ? 'normal' : i === focus.index - 1 ? 'active' : 'dim',
       })),
     [paths, routePoints, focus],
   )
 
   const overview = useMemo(() => overviewPose(positions, freeFovDeg, aspect), [positions, freeFovDeg, aspect])
 
+  const orbitRadius = focus.kind === 'orbit' ? focus.radiusM : 0
+  const orbit = useMemo(() => orbitPose(new Vector3(0, routeBase, 0), orbitRadius), [orbitRadius, routeBase])
+
   const pose = useMemo(() => {
+    if (focus.kind === 'orbit') return orbit
     if (focus.kind === 'overview') return overview
     const i = focus.index
     const here = positions[i]
     if (!here) return overview
     return stopPose(here, arrivalHeading(i, positions, paths, frame))
-  }, [focus, positions, paths, frame, overview])
+  }, [focus, positions, paths, frame, overview, orbit])
 
   // Neighbouring stops of the same day fly along their leg (reversed when going back).
   const pathBetween = useCallback(
@@ -217,8 +225,9 @@ function Scene(props: SceneProps) {
   )
 
   // Zoom-out limit must allow the overview, or the controls would clamp it.
-  const maxDistance = Math.max(3000, overview.position.distanceTo(overview.target) * 1.3)
-  const focusKey = focus.kind === 'overview' ? `day:${dayIndex}:overview` : `day:${dayIndex}:stop:${focus.index}`
+  const maxDistance = Math.max(3000, overview.position.distanceTo(overview.target) * 1.3, orbit.position.distanceTo(orbit.target) * 1.3)
+  const focusKey =
+    focus.kind === 'orbit' ? 'orbit' : focus.kind === 'overview' ? `day:${dayIndex}:overview` : `day:${dayIndex}:stop:${focus.index}`
 
   return (
     <>
@@ -233,8 +242,28 @@ function Scene(props: SceneProps) {
         maxPolarAngle={Math.PI * 0.43}
       />
       <CameraRig focusKey={focusKey} pose={pose} reducedMotion={reducedMotion} pathBetween={pathBetween} />
+      {focus.kind === 'orbit' && !reducedMotion && <AutoOrbit />}
     </>
   )
+}
+
+/** Degrees per second for the planning orbit: a full turn in about two minutes. */
+const ORBIT_DEG_PER_S = 3
+
+/** Circles the camera around the controls' target, and keeps frames coming while it does. */
+function AutoOrbit() {
+  const camera = useThree((s) => s.camera)
+  const controls = useThree((s) => s.controls) as unknown as { target: Vector3; enabled: boolean; update: () => void } | null
+  const invalidate = useThree((s) => s.invalidate)
+  useFrame((_, delta) => {
+    invalidate()
+    // Controls are off during a camera flight; let the flight finish first.
+    if (!controls?.enabled) return
+    orbitAround(camera.position, controls.target, toRad(ORBIT_DEG_PER_S) * Math.min(delta, 0.1))
+    camera.lookAt(controls.target)
+    controls.update()
+  })
+  return null
 }
 
 function parseStopKey(key: string): { day: number; stop: number } | null {

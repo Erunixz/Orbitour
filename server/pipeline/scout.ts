@@ -3,6 +3,7 @@ import type { Pace } from '../../src/lib/types.js'
 import { LlmError } from '../llm/openai.js'
 import { PlanError, stage, type Candidate, type Emit, type PipelineDeps, type PlanState } from './context.js'
 import { SCOUT_SYSTEM, type ScoutInput } from './prompts/scout.js'
+import { preferencePool } from './preferences.js'
 import { displayName } from './verifier.js'
 
 // Scout (LLM): picks the places that fit the request from the candidate pool.
@@ -37,12 +38,21 @@ export function scoutInput(state: PlanState, pool: Candidate[]): ScoutInput {
     pace: request.pace,
     party: request.party,
     budget: request.budget,
+    mode: request.mode,
     interests: request.interests,
     wanted,
     mustSee: survey.mustSee.map((m) => ({ typed: m.typed, foundAs: m.place?.name ?? null })),
-    pool: pool
-      .filter((c) => !isBanned(state, c.title))
-      .map((c) => ({ title: c.title, about: c.description, kind: c.kind })),
+    pool: preferencePool(
+      pool.filter((c) => !isBanned(state, c.title)),
+      request,
+      wanted,
+    ).map((c) => ({
+      title: c.title,
+      about: c.osmType ? `${c.osmType}. ${c.description}` : c.description,
+      kind: c.kind,
+      fits: c.fits,
+      ...(c.sitelinks !== undefined ? { fame: c.sitelinks } : {}),
+    })),
     avoid: [...state.banned],
     feedback: state.scoutFeedback,
   }

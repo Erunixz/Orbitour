@@ -57,6 +57,22 @@ export function overviewPose(points: Vector3[], verticalFovDeg: number, aspect: 
   return stopPose(center, NORTH, { distanceM, pitchDeg: 55 })
 }
 
+/** Far view over the whole trip area, for the slow circling while a plan is made. */
+export function orbitPose(center: Vector3, radiusM: number): Pose {
+  const distanceM = clamp(radiusM * 1.3, 3000, 9000)
+  return stopPose(center, NORTH, { distanceM, pitchDeg: 48 })
+}
+
+/** Turns the camera around the target's vertical axis by `angle` radians. */
+export function orbitAround(position: Vector3, target: Vector3, angle: number): void {
+  const x = position.x - target.x
+  const z = position.z - target.z
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  position.x = target.x + x * c - z * s
+  position.z = target.z + x * s + z * c
+}
+
 /** Flight length in seconds: about 2 s for short hops, up to 3.5 s for long ones. */
 export function flightSeconds(from: Pose, to: Pose): number {
   const hop = Math.hypot(to.target.x - from.target.x, to.target.z - from.target.z)
@@ -118,27 +134,66 @@ export function flightProgress(flight: Flight, now: number): number {
   return clamp((now - flight.startedAt) / flight.seconds, 0, 1)
 }
 
+/**
+ * How far the camera pulls back at the middle of a flight, as a share of its
+ * distance to the target. More when the view turns a lot, so the rotation reads
+ * as a wide sweep and not a spin on the spot.
+ */
+export const PULL_BACK = { base: 0.35, perTurn: 0.45, maxExtraM: 700 }
+
+/** Camera offset from its target as heading angle, horizontal distance and height. */
+type Orbit = { angle: number; flat: number; height: number }
+
+function toOrbit(offset: Vector3): Orbit {
+  return { angle: Math.atan2(offset.x, offset.z), flat: Math.hypot(offset.x, offset.z), height: offset.y }
+}
+
+/** Signed shortest turn from angle a to angle b, in -PI..PI. */
+export function turnBetween(a: number, b: number): number {
+  let d = (b - a) % (2 * Math.PI)
+  if (d > Math.PI) d -= 2 * Math.PI
+  if (d < -Math.PI) d += 2 * Math.PI
+  return d
+}
+
 const offsetA = new Vector3()
 const offsetB = new Vector3()
 
-/** Camera pose at progress t (0..1). Eased along the way, with a height arc. */
+/**
+ * Offset from the target at eased progress e. The heading swings along the
+ * shorter arc around the target (a straight blend of two opposite offsets would
+ * pass right over it, far too close), and the camera backs off mid-flight.
+ */
+function orbitOffset(from: Pose, to: Pose, e: number, out: Vector3): Vector3 {
+  const a = toOrbit(offsetA.subVectors(from.position, from.target))
+  const b = toOrbit(offsetB.subVectors(to.position, to.target))
+  const turn = turnBetween(a.angle, b.angle)
+  const angle = a.angle + turn * e
+  const flat = a.flat + (b.flat - a.flat) * e
+  const height = a.height + (b.height - a.height) * e
+  const dist = Math.hypot(flat, height)
+  const share = PULL_BACK.base + PULL_BACK.perTurn * (Math.abs(turn) / Math.PI)
+  const extra = Math.min(dist * share, PULL_BACK.maxExtraM) * Math.sin(Math.PI * e)
+  const scale = dist > 0 ? (dist + extra) / dist : 1
+  return out.set(Math.sin(angle) * flat * scale, height * scale, Math.cos(angle) * flat * scale)
+}
+
+const offset = new Vector3()
+
+/** Camera pose at progress t (0..1). Eased along the way, pulled back and raised in the middle. */
 export function sampleFlight(flight: Flight, t: number, out: Pose = emptyPose()): Pose {
   const e = easeInOutCubic(clamp(t, 0, 1))
   if (flight.path) {
-    // Look-at point rides the route; the camera keeps an offset blended from start to end.
-    // The route runs between the two targets, so pin its ends to them exactly.
+    // Look-at point rides the route. The route runs between the two targets, so pin its ends to them exactly.
     pointAlongPath(flight.path, e, out.target)
     const first = flight.path.points[0]!
     const last = flight.path.points[flight.path.points.length - 1]!
     out.target.add(offsetA.subVectors(flight.from.target, first).multiplyScalar(1 - e))
     out.target.add(offsetB.subVectors(flight.to.target, last).multiplyScalar(e))
-    offsetA.subVectors(flight.from.position, flight.from.target)
-    offsetB.subVectors(flight.to.position, flight.to.target)
-    out.position.copy(out.target).add(offsetA.lerp(offsetB, e))
   } else {
-    out.position.lerpVectors(flight.from.position, flight.to.position, e)
     out.target.lerpVectors(flight.from.target, flight.to.target, e)
   }
+  out.position.copy(out.target).add(orbitOffset(flight.from, flight.to, e, offset))
   out.position.y += flight.arcM * Math.sin(Math.PI * e)
   return out
 }

@@ -7,6 +7,7 @@ import type { RouteMatrixClient, RoutesClient } from '../upstream/googleRoutes.j
 import type { NominatimClient, Place } from '../upstream/nominatim.js'
 import type { WeatherClient } from '../upstream/openMeteo.js'
 import type { OverpassClient } from '../upstream/overpass.js'
+import type { WikidataClient } from '../upstream/wikidata.js'
 import type { WikipediaClient } from '../upstream/wikipedia.js'
 
 // Shared shapes for the planning pipeline.
@@ -14,6 +15,7 @@ import type { WikipediaClient } from '../upstream/wikipedia.js'
 export type PipelineDeps = {
   nominatim: NominatimClient
   wikipedia: WikipediaClient
+  wikidata: WikidataClient
   overpass: OverpassClient
   weather: WeatherClient
   routes: RoutesClient | null
@@ -72,6 +74,10 @@ export type Candidate = LatLon & {
   description: string
   kind: StopKind
   score: number
+  /** What OpenStreetMap calls it, like "museum" or "castle". Set when the place is verified there. */
+  osmType?: string
+  /** Number of language Wikipedias covering it, when known. */
+  sitelinks?: number
 }
 
 /** A stop before the Timekeeper has given it times. */

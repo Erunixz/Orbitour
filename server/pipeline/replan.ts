@@ -5,6 +5,7 @@ import { runCandidates } from './candidates.js'
 import { PlanError, type PipelineDeps, type PlannedStop, type PlanState, type Survey } from './context.js'
 import { applyChanges, EditError, findStop, type Change } from './edit.js'
 import { REPLAN_SYSTEM, type ReplanInput } from './prompts/replan.js'
+import { interestsMatched } from './preferences.js'
 import { SCOUT_SYSTEM, type ScoutInput } from './prompts/scout.js'
 import { scoutReplySchema } from './scout.js'
 import { runVerifier, stopForPlace } from './verifier.js'
@@ -71,10 +72,11 @@ async function findPlace(description: string, trip: Trip, deps: PipelineDeps, st
       pace: trip.request.pace,
       party: trip.request.party,
       budget: trip.request.budget,
+      mode: trip.request.mode,
       interests: trip.request.interests,
       wanted: 3,
       mustSee: [],
-      pool: pool.map((c) => ({ title: c.title, about: c.description, kind: c.kind })),
+      pool: pool.map((c) => ({ title: c.title, about: c.description, kind: c.kind, fits: interestsMatched(c, trip.request.interests) })),
       avoid: trip.days.flatMap((d) => d.stops.map((s) => s.name)),
       feedback: [`The traveller wants to add: "${description}". Pick only places that match it, best match first.`],
     }

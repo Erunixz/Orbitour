@@ -21,6 +21,9 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
+      // The Tiles key allows only this address. Moving to 5174 would break the 3D map,
+      // so fail loudly instead (see the README for freeing the port).
+      strictPort: true,
       proxy: {
         '/api': { target: `http://localhost:${apiPort}`, changeOrigin: true },
       },

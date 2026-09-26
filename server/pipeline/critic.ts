@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { Leg, Stop, TripRequest } from '../../src/lib/types.js'
 import { LlmError } from '../llm/openai.js'
 import { stage, type Emit, type PipelineDeps, type PlanState } from './context.js'
+import { interestsMatched } from './preferences.js'
 import { CRITIC_SYSTEM, type CriticInput } from './prompts/critic.js'
 
 // Critic (LLM): reviews the scheduled plan for what numbers cannot judge. Each
@@ -29,6 +30,7 @@ export function criticInput(request: TripRequest, label: string, days: ReviewDay
       days: request.days,
       pace: request.pace,
       party: request.party,
+      budget: request.budget,
       interests: request.interests,
       mustSee: request.mustSee,
     },
@@ -43,13 +45,35 @@ export function criticInput(request: TripRequest, label: string, days: ReviewDay
           arrive: s.arrive,
           depart: s.depart,
           mustSee: s.mustSee,
+          fits: interestsMatched({ title: s.name, description: s.summary, kind: s.kind }, request.interests),
           about: s.role === 'start' ? 'Where the day starts (the traveller chose it). Not a place to visit.' : s.summary.slice(0, 160),
         })),
         legs: day.legs.map((l) => ({ from: names.get(l.fromId) ?? l.fromId, to: names.get(l.toId) ?? l.toId, mode: l.mode, minutes: l.minutes })),
       }
     }),
-    audit: days.flatMap((day, d) => day.audit.map((a) => `Day ${d + 1}: ${a}`)),
+    audit: [
+      ...days.flatMap((day, d) => day.audit.map((a) => `Day ${d + 1}: ${a}`)),
+      ...preferenceAudit(request, days),
+    ],
   }
+}
+
+/** Stops that match no interest, and interests no stop covers. Found by code, so the Critic can act on them. */
+export function preferenceAudit(request: TripRequest, days: ReviewDay[]): string[] {
+  if (request.interests.length === 0) return []
+  const out: string[] = []
+  const covered = new Set<string>()
+  days.forEach((day, d) => {
+    for (const s of day.stops) {
+      if (s.role === 'start' || s.kind === 'food' || s.kind === 'lodging') continue
+      const fits = interestsMatched({ title: s.name, description: s.summary, kind: s.kind }, request.interests)
+      fits.forEach((f) => covered.add(f))
+      if (fits.length === 0 && !s.mustSee) out.push(`Day ${d + 1}: ${s.name} (${s.id}) matches none of the interests.`)
+    }
+  })
+  const missing = request.interests.filter((i) => !covered.has(i))
+  if (missing.length > 0) out.push(`No stop covers: ${missing.join(', ')}.`)
+  return out
 }
 
 /** The review, or null when the Critic could not run. The plan is still usable without it. */

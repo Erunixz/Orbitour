@@ -17,12 +17,12 @@ const NOT_DESTINATION = [
   /\b(footballer|politician|actor|actress|singer|writer|painter|architect|businessman|businesswoman|journalist|musician|athlete|player|born)\b/,
   /\b(festival|battle|siege|riot|attack|bombing|shooting|protest|election|treaty|event|competition|tournament|race)\b/,
   /\b(accident|derailment|disaster|crash|collapse|earthquake|explosion|massacre|shipwreck|incident|murder)\b/,
-  /\b(school|college|lycee|hospital|clinic|prison|headquarters|office building|apartment|residential|car park|parking)\b/,
+  /\b(school|college|university|faculty|lycee|hospital|clinic|prison|headquarters|office building|apartment|residential|car park|parking)\b/,
   /\b(album|song|film|novel|television|tv series|video game|band)\b/,
 ]
 
 /** Lowercase without accents, so word boundaries work on "Café" or "Musée". */
-const plain = (s: string) =>
+export const plain = (s: string) =>
   s
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -37,7 +37,9 @@ export function isDestination(title: string, description: string): boolean {
   const text = plain(description)
   if (!text) return true
   // People and past organisations carry a year range, like "(1802–1885)" or "1933–1969 secret police".
-  if (/\b\d{3,4}\s*[-–]\s*\d{2,4}\b/.test(text) || /\bborn \d{3,4}\b/.test(text)) return false
+  // A building's dates ("built 1163–1345") are fine.
+  const yearRange = /\b\d{3,4}\s*[-–]\s*\d{2,4}\b/.test(text) && !/\b(built|constructed|completed|erected|opened|founded|established)\b/.test(text)
+  if (yearRange || /\bborn \d{3,4}\b/.test(text)) return false
   return !NOT_DESTINATION.some((re) => re.test(text))
 }
 
@@ -70,6 +72,32 @@ export function kindFromOsm(category: string, type: string): StopKind {
   if (['hotel', 'guest_house', 'hostel'].includes(type)) return 'lodging'
   if (['tourism', 'historic', 'amenity', 'building', 'man_made'].includes(category)) return 'sight'
   return 'other'
+}
+
+/** Kind and a short type name ("castle", "art gallery") from an OSM place's tags. */
+export function kindFromTags(tags: Record<string, string>): { kind: StopKind; type: string } {
+  const tourism = tags.tourism ?? ''
+  const historic = tags.historic ?? ''
+  const leisure = tags.leisure ?? ''
+  const amenity = tags.amenity ?? ''
+  const manMade = tags.man_made ?? ''
+  const pretty = (s: string) => s.replace(/_/g, ' ')
+  if (tourism === 'museum' || tourism === 'gallery' || amenity === 'planetarium') {
+    return { kind: 'museum', type: tourism === 'gallery' ? 'art gallery' : pretty(tags.museum ? `${tags.museum} museum` : tourism || amenity) }
+  }
+  if (tourism === 'viewpoint' || manMade === 'tower' || manMade === 'observatory' || historic === 'tower') {
+    return { kind: 'viewpoint', type: tourism === 'viewpoint' ? 'viewpoint' : pretty(manMade || historic) }
+  }
+  if (['park', 'garden', 'nature_reserve'].includes(leisure) || tourism === 'zoo' || tourism === 'aquarium' || tourism === 'theme_park') {
+    return { kind: 'park', type: pretty(leisure || tourism) }
+  }
+  if (amenity === 'marketplace') return { kind: 'market', type: 'market' }
+  if (amenity === 'place_of_worship') return { kind: 'sight', type: tags.building && tags.building !== 'yes' ? pretty(tags.building) : 'place of worship' }
+  if (amenity === 'theatre' || amenity === 'concert_hall' || amenity === 'arts_centre') return { kind: 'sight', type: pretty(amenity) }
+  if (historic) return { kind: 'sight', type: historic === 'yes' ? 'historic site' : pretty(historic) }
+  if (tourism === 'artwork') return { kind: 'sight', type: tags.artwork_type ? pretty(tags.artwork_type) : 'artwork' }
+  if (tags.building && !['yes', 'public'].includes(tags.building)) return { kind: 'sight', type: pretty(tags.building) }
+  return { kind: 'sight', type: tourism ? pretty(tourism) : 'landmark' }
 }
 
 /** "Museum in Paris" style summary for a place that has no article. Written from data, not by the LLM. */

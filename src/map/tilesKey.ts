@@ -27,7 +27,13 @@ const messages: Record<TilesProblem, string> = {
   unknown: 'The 3D city failed to load.',
 }
 
-export function describe(problem: TilesProblem): TilesDiagnosis {
+export function describe(problem: TilesProblem, origin?: string): TilesDiagnosis {
+  if (problem === 'referrer_blocked' && origin) {
+    return {
+      problem,
+      message: `Google blocks the Tiles key on ${origin}. Open the app at http://localhost:5173, or add ${origin}/* to the key's website restrictions.`,
+    }
+  }
   return { problem, message: messages[problem] }
 }
 
@@ -55,5 +61,5 @@ export async function diagnoseTilesKey(key: string, fetchImpl: typeof fetch = fe
   }
   if (res.ok) return null
   const body = await res.text().catch(() => '')
-  return describe(classify(res.status, body))
+  return describe(classify(res.status, body), typeof window === 'undefined' ? undefined : window.location.origin)
 }

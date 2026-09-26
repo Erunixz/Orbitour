@@ -5,6 +5,7 @@ import type { PipelineDeps } from '../server/pipeline/context'
 import type { NominatimClient, Place } from '../server/upstream/nominatim'
 import type { OsmPlace, OverpassClient } from '../server/upstream/overpass'
 import type { WeatherClient } from '../server/upstream/openMeteo'
+import type { WikidataClient, WikidataFacts } from '../server/upstream/wikidata'
 import type { WikiArticle, WikiPage, WikipediaClient } from '../server/upstream/wikipedia'
 import type { StageEvent } from '../src/lib/planEvents'
 import type { TripRequest } from '../src/lib/types'
@@ -61,6 +62,9 @@ export function fakeWikipedia(): WikipediaClient & { lookups: string[][] } {
     lookups,
     async nearby() {
       return pages
+    },
+    async pages(titles) {
+      return pages.filter((p) => titles.includes(p.title))
     },
     async lookup(titles) {
       lookups.push(titles)
@@ -131,6 +135,11 @@ export function fakeOverpass(down = false): OverpassClient & { foodCalls: number
       if (down) throw new (await import('../server/upstream/overpass')).OverpassDownError()
       return points.flatMap((p) => [osm(++n, `Bistro ${n}`, p, { cuisine: 'portuguese' }), osm(++n, `Cafe ${n}`, p, { amenity: 'cafe' })])
     },
+    // No tourist tags by default, so plans use the Wikipedia-only pool. See fakeAttractions.
+    async attractions() {
+      if (down) throw new (await import('../server/upstream/overpass')).OverpassDownError()
+      return []
+    },
     async lodging(center) {
       if (down) throw new (await import('../server/upstream/overpass')).OverpassDownError()
       return [osm(900, 'Grand Hotel', center, { amenity: '', tourism: 'hotel' }), osm(901, 'Cosy Guest House', center, { amenity: '', tourism: 'guest_house' })]
@@ -178,11 +187,26 @@ export const scoutPicks = (titles: string[], mustSee: string[] = []) => ({
   picks: titles.map((title) => ({ title, kind: 'other', reason: `${title} suits you.`, importance: 3, mustSee: mustSee.includes(title) })),
 })
 
+/** Wikidata where page 100 + i is Q(100 + i), in English, with `sitelinks` language editions (default 10). */
+export function fakeWikidata(sitelinks: Record<string, number> = {}): WikidataClient {
+  return {
+    async facts(ids) {
+      const out = new Map<string, WikidataFacts>()
+      for (const id of ids) {
+        const page = pages.find((p) => `Q${p.pageId}` === id)
+        if (page) out.set(id, { enTitle: page.title, sitelinks: sitelinks[page.title] ?? 10 })
+      }
+      return out
+    },
+  }
+}
+
 export function fakeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
   let id = 0
   return {
     nominatim: fakeNominatim(),
     wikipedia: fakeWikipedia(),
+    wikidata: fakeWikidata(),
     overpass: fakeOverpass(),
     weather: fakeWeather(),
     routes: null,

@@ -17,9 +17,10 @@ import {
 import { guessKind, isDestination, kindFromOsm, osmSummary } from './places.js'
 import type { ScoutPick } from './scout.js'
 
-// Verifier (code): every pick must be a real Wikipedia article with coordinates
-// inside the trip area. Everything else is dropped with a reason. Must-see
-// places the Scout left out are added back.
+// Verifier (code): every pick must be one of the verified candidates (or a
+// must-see place): a real Wikipedia article with coordinates inside the trip
+// area. Everything else is dropped with a reason. Must-see places the Scout
+// left out are added back.
 
 /** Two picks closer than this are the same place. Neighbours like a convent next to a lift stay apart. */
 const SAME_PLACE_M = 35
@@ -131,6 +132,10 @@ export async function runVerifier(
     const description = article?.description ?? fromPool!.description
     const matched = mustSeeFor({ name: displayName(title), lat, lon }, survey.mustSee)
 
+    if (!fromPool && !matched) {
+      reject(title, 'not one of the verified tourist places')
+      continue
+    }
     const limit = matched ? survey.radiusM * MUST_SEE_REACH : survey.radiusM
     const away = distanceM({ lat, lon }, survey.center)
     if (away > limit) {
