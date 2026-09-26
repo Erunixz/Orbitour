@@ -97,6 +97,7 @@ export const tripSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   version: z.number().int().min(1),
+  lastChange: z.object({ at: z.string(), summary: z.array(z.string()), undoable: z.boolean() }).optional(),
 })
 
 /** One row of the saved trips list. */

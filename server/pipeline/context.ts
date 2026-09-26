@@ -79,6 +79,8 @@ export type PlannedStop = Omit<Stop, 'visitMin' | 'arrive' | 'depart'> & {
   /** 1 (nice to have) to 5 (a highlight). Must-see stops are 5. */
   importance: number
   meal?: 'lunch' | 'dinner'
+  /** Visit length chosen by the traveller. The Timekeeper keeps it as is. */
+  fixedMin?: number
 }
 
 export type PlanState = {

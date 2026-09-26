@@ -85,6 +85,16 @@ Each plan logs its LLM calls and token counts on the server, never the keys or t
 
 Nominatim's usage policy does not allow search-as-you-type, so the city field suggests from a built-in list and the server looks the city up once, when planning starts.
 
+## Changing a trip
+
+Saved trips can be changed from the sidebar (or the Stops sheet on a phone). Sample trips opened with `?fixture=` are read-only.
+
+- **Edit stops** shows controls under each place: earlier and later (or drag the row on desktop), time spent there, move to another day, and remove. The starting point stays first and cannot be removed.
+- **Add a place** searches near the trip when you press Search, then adds the place where it adds the least walking. It gets a Wikipedia summary and photo when one exists.
+- **Describe a change** takes text like "drop the museum, slower morning". The fast model (`LLM_MODEL_FAST`) turns it into edits, and code checks each one before anything changes. New places go through the Scout and the Verifier, like a normal plan.
+
+Only the changed days are re-timed, and only legs between new neighbours are routed again. Your edits are kept even when a day runs long: you get a warning instead of lost stops. After each change a box lists what changed ("Removed Art Museum.", "Moved Castle Hill, now at 14:30."), with **Undo** to go back one step. The previous version is kept in the same saved document.
+
 ## Saved trips (MongoDB)
 
 Every planned trip is saved as one document, and the home page lists recent trips to open or delete.

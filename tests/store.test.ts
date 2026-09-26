@@ -76,6 +76,27 @@ describe('trip stores', () => {
     await commonStoreChecks(new MemoryTripStore())
   })
 
+  it('both stores keep one step of undo', async () => {
+    const mongo = fakeTripCollection()
+    for (const store of [new MemoryTripStore(), new MongoTripStore(async () => mongo.collection)] as TripStore[]) {
+      const v1 = tripAt('u', '2026-09-01T00:00:00.000Z')
+      await store.save(v1)
+      expect(await store.undo('u')).toBeNull()
+      const v2: Trip = { ...v1, title: 'Edited', updatedAt: '2026-09-02T00:00:00.000Z', lastChange: { at: 'x', summary: ['Edited.'], undoable: true } }
+      await store.saveEdit(v2, v1)
+      expect((await store.get('u'))?.title).toBe('Edited')
+      const back = await store.undo('u')
+      expect(back?.title).toBe('Trip u')
+      expect((await store.get('u'))?.title).toBe('Trip u')
+      // Only one step is kept.
+      expect(await store.undo('u')).toBeNull()
+      // A new plan saved over it forgets any older version.
+      await store.saveEdit(v2, v1)
+      await store.save(v1)
+      expect(await store.undo('u')).toBeNull()
+    }
+  })
+
   it('memory store hands out copies, so callers cannot change what is stored', async () => {
     const store = new MemoryTripStore()
     await store.save(tripAt('x', '2026-09-01T00:00:00.000Z'))

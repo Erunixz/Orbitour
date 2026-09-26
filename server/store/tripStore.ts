@@ -8,7 +8,12 @@ import type { Trip } from '../../src/lib/types.js'
 export interface TripStore {
   readonly kind: 'memory' | 'mongo'
   get(id: string): Promise<Trip | null>
+  /** Saves a new trip. Any older version is forgotten. */
   save(trip: Trip): Promise<void>
+  /** Saves an edited trip and keeps `previous` (one step) for undo. */
+  saveEdit(trip: Trip, previous: Trip): Promise<void>
+  /** Puts the previous version back. Null when there is nothing to undo. */
+  undo(id: string): Promise<Trip | null>
   /** Most recently changed first. */
   list(limit: number): Promise<TripSummary[]>
   /** False when there was no such trip. */
@@ -27,20 +32,40 @@ export function summarize(trip: Trip): TripSummary {
   return { id: trip.id, title: trip.title, city: trip.request.city, days: trip.days.length, updatedAt: trip.updatedAt }
 }
 
+/** The restored version cannot be undone again: only one step is kept. */
+const restored = (trip: Trip): Trip =>
+  trip.lastChange ? { ...trip, lastChange: { ...trip.lastChange, undoable: false } } : trip
+
 export class MemoryTripStore implements TripStore {
   readonly kind = 'memory' as const
-  private readonly trips = new Map<string, Trip>()
+  private readonly trips = new Map<string, { trip: Trip; previous: Trip | null }>()
 
   constructor(private readonly maxTrips = 200) {}
 
   async get(id: string): Promise<Trip | null> {
-    const trip = this.trips.get(id)
-    return trip ? structuredClone(trip) : null
+    const entry = this.trips.get(id)
+    return entry ? structuredClone(entry.trip) : null
   }
 
   async save(trip: Trip): Promise<void> {
+    this.put(trip, null)
+  }
+
+  async saveEdit(trip: Trip, previous: Trip): Promise<void> {
+    this.put(trip, previous)
+  }
+
+  async undo(id: string): Promise<Trip | null> {
+    const entry = this.trips.get(id)
+    if (!entry?.previous) return null
+    const back = restored(entry.previous)
+    this.put(back, null)
+    return structuredClone(back)
+  }
+
+  private put(trip: Trip, previous: Trip | null): void {
     this.trips.delete(trip.id)
-    this.trips.set(trip.id, structuredClone(trip))
+    this.trips.set(trip.id, { trip: structuredClone(trip), previous: previous ? structuredClone(previous) : null })
     while (this.trips.size > this.maxTrips) {
       const oldest = this.trips.keys().next().value
       if (oldest === undefined) break
@@ -50,6 +75,7 @@ export class MemoryTripStore implements TripStore {
 
   async list(limit: number): Promise<TripSummary[]> {
     return [...this.trips.values()]
+      .map((e) => e.trip)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, limit)
       .map(summarize)
@@ -64,7 +90,11 @@ export class MemoryTripStore implements TripStore {
   }
 }
 
-export type TripDoc = Omit<Trip, 'id'> & { _id: string }
+export type TripDoc = Omit<Trip, 'id'> & {
+  _id: string
+  /** The version before the last edit, for undo. */
+  previous?: Omit<Trip, 'id'> | null
+}
 type SummaryDoc = { _id: string; title?: string; updatedAt?: string; request?: { city?: string; days?: number } }
 
 /** The few collection calls the store uses, so tests can pass a fake. */
@@ -124,12 +154,15 @@ export class MongoTripStore implements TripStore {
 
   async get(id: string): Promise<Trip | null> {
     const doc = await this.use('get', (c) => c.findOne(id))
-    if (!doc) return null
-    const { _id, ...rest } = doc
-    const parsed = tripSchema.safeParse({ ...rest, id: _id })
+    return doc ? this.parse(doc._id, doc) : null
+  }
+
+  private parse(id: string, doc: Omit<TripDoc, '_id'> & { _id?: string }): Trip | null {
+    const { _id, previous: _previous, ...rest } = doc
+    const parsed = tripSchema.safeParse({ ...rest, id })
     if (!parsed.success) {
       // Stored before a schema change or edited by hand. Better to say "not found" than crash the view.
-      this.log(`[store] trip ${_id} does not match the trip schema`)
+      this.log(`[store] trip ${id} does not match the trip schema`)
       return null
     }
     return parsed.data
@@ -137,7 +170,23 @@ export class MongoTripStore implements TripStore {
 
   async save(trip: Trip): Promise<void> {
     const { id, ...rest } = trip
-    await this.use('save', (c) => c.replace({ ...rest, _id: id }))
+    await this.use('save', (c) => c.replace({ ...rest, _id: id, previous: null }))
+  }
+
+  async saveEdit(trip: Trip, previous: Trip): Promise<void> {
+    const { id, ...rest } = trip
+    const { id: _prevId, ...before } = previous
+    await this.use('save', (c) => c.replace({ ...rest, _id: id, previous: before }))
+  }
+
+  async undo(id: string): Promise<Trip | null> {
+    const doc = await this.use('undo', (c) => c.findOne(id))
+    if (!doc?.previous) return null
+    const back = this.parse(id, doc.previous)
+    if (!back) return null
+    const trip = restored(back)
+    await this.save(trip)
+    return trip
   }
 
   async list(limit: number): Promise<TripSummary[]> {

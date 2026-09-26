@@ -8,6 +8,7 @@ import { formatMinutes } from './format'
 import { useFollowRoute } from './settings'
 import { DayPanel, DayTabs, FollowRouteToggle, TripHeading } from './Sidebar'
 import { StopCard } from './StopCard'
+import { useTripEditor } from './useTripEditor'
 import { backView, dayView, hashForView, nextView, sameView, stopView, viewFromHash, type View } from './tripNav'
 
 function isTyping(target: EventTarget | null): boolean {
@@ -15,10 +16,37 @@ function isTyping(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-/** `notice` is a warning about the trip itself, such as "not saved". */
-export function TripScreen({ trip, notice }: { trip: Trip; notice?: string }) {
+type Props = {
+  trip: Trip
+  /** A warning about the trip itself, such as "not saved". */
+  notice?: string
+  /** Saved trips can be edited; sample trips cannot. */
+  editable?: boolean
+}
+
+export function TripScreen({ trip: initialTrip, notice, editable = false }: Props) {
+  const editor = useTripEditor(initialTrip, editable)
+  const trip = editor.trip
   const counts = useMemo(() => trip.days.map((d) => d.stops.length), [trip])
   const [view, setView] = useState<View>(() => viewFromHash(window.location.hash, counts))
+
+  // After a change, stay on the same stop wherever it went, or on the day's overview if it is gone.
+  const shownTrip = useRef(trip)
+  useEffect(() => {
+    const before = shownTrip.current
+    shownTrip.current = trip
+    if (before === trip) return
+    setView((v) => {
+      const id = v.stop === null ? null : before.days[v.day]?.stops[v.stop]?.id
+      if (id) {
+        for (const [d, day] of trip.days.entries()) {
+          const i = day.stops.findIndex((s) => s.id === id)
+          if (i !== -1) return { day: d, stop: i }
+        }
+      }
+      return dayView(v.day, trip.days.map((d) => d.stops.length))
+    })
+  }, [trip])
   const [followRoute, setFollowRoute] = useFollowRoute()
   const narrow = useNarrowScreen()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -84,7 +112,15 @@ export function TripScreen({ trip, notice }: { trip: Trip; notice?: string }) {
   const canNext = !sameView(nextView(view, counts), view)
 
   const dayPanel = (
-    <DayPanel day={day} dayIndex={view.day} view={view} onOverview={() => go(dayView(view.day, counts))} onSelectStop={selectStop} />
+    <DayPanel
+      day={day}
+      dayIndex={view.day}
+      view={view}
+      onOverview={() => go(dayView(view.day, counts))}
+      onSelectStop={selectStop}
+      editor={editor}
+      dayCount={trip.days.length}
+    />
   )
   const dayTabs = <DayTabs days={trip.days} current={view.day} onSelect={selectDay} />
 

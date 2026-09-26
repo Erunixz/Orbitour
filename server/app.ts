@@ -5,6 +5,7 @@ import { ApiError, sendError, sendJson, type Req, type Res } from './http.js'
 import { createLlm } from './llm/openai.js'
 import { buildHealth } from './routes/health.js'
 import { handleLegs } from './routes/legs.js'
+import { handlePatchDay, handlePlaceSearch, handleReplan, handleUndo } from './routes/edit.js'
 import { handleDeleteTrip, handleGetTrip, handleListTrips, handlePlanTrip, type TripRouteDeps } from './routes/trips.js'
 import { connectMongo } from './store/mongo.js'
 import { MemoryTripStore, MongoTripStore, tripCollection, type TripDoc, type TripStore } from './store/tripStore.js'
@@ -81,6 +82,10 @@ export function createApp(env: Env = process.env, deps: AppDeps = defaultDeps(en
   add('GET', '/api/trips', (_req, res) => handleListTrips(res, deps))
   add('GET', '/api/trips/:id', (_req, res, params) => handleGetTrip(res, params.id ?? '', deps))
   add('DELETE', '/api/trips/:id', (_req, res, params) => handleDeleteTrip(res, params.id ?? '', deps))
+  add('PATCH', '/api/trips/:id/days/:day', (req, res, params) => handlePatchDay(req, res, params.id ?? '', params.day ?? '', deps))
+  add('POST', '/api/trips/:id/replan', (req, res, params) => handleReplan(req, res, params.id ?? '', deps))
+  add('POST', '/api/trips/:id/undo', (_req, res, params) => handleUndo(res, params.id ?? '', deps))
+  add('GET', '/api/places/search', (req, res) => handlePlaceSearch(req, res, deps))
 
   return async function handle(req: Req, res: Res): Promise<void> {
     try {

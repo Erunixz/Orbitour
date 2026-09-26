@@ -100,7 +100,11 @@ export function fakeNominatim(extra: Record<string, Place | null> = {}): Nominat
     calls,
     async search(query) {
       calls.push(query)
-      if (query in extra) return extra[query] ? [extra[query]!] : []
+      if (query in extra) {
+        const hit = extra[query]
+        // Real searches often return one place as several nearby map objects.
+        return hit ? [hit, { ...hit, lat: hit.lat + 0.0003, osmUrl: `${hit.osmUrl}0` }] : []
+      }
       if (query.toLowerCase() === 'testville') {
         return [place('Testville', CENTER, { category: 'boundary', type: 'administrative', bbox: [38.6, 38.8, -9.3, -9.0] })]
       }

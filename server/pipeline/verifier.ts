@@ -197,14 +197,22 @@ export async function runVerifier(
 }
 
 /** A must-see place: its Wikipedia article when one sits right there, else the map result. */
-async function mustSeeStop(m: MustSee, place: Place, deps: PipelineDeps): Promise<PlannedStop> {
+function mustSeeStop(m: MustSee, place: Place, deps: PipelineDeps): Promise<PlannedStop> {
+  return stopForPlace(place, m.typed, `You asked for ${m.typed}.`, deps)
+}
+
+/**
+ * A stop for a place the traveller named or picked from search: the Wikipedia
+ * article at that spot when there is one (summary and photo), else the map result.
+ */
+export async function stopForPlace(place: Place, typed: string, reason: string, deps: PipelineDeps): Promise<PlannedStop> {
   try {
-    const titles = await deps.wikipedia.searchTitles(m.typed, 3)
+    const titles = await deps.wikipedia.searchTitles(typed, 3)
     const found = await deps.wikipedia.lookup(titles)
     for (const title of titles) {
       const article = found.get(title)
       if (article && distanceM(article, place) <= MUST_SEE_MATCH_M) {
-        const stop = stopFromArticle(article, guessKind(article.title, article.description), `You asked for ${m.typed}.`, 5)
+        const stop = stopFromArticle(article, guessKind(article.title, article.description), reason, 5)
         stop.mustSee = true
         if (article.image) {
           const photo = (await deps.wikipedia.photos([article.image])).get(article.image)
@@ -216,5 +224,5 @@ async function mustSeeStop(m: MustSee, place: Place, deps: PipelineDeps): Promis
   } catch {
     // Fall back to the map result below.
   }
-  return stopFromPlace(place, m.typed)
+  return { ...stopFromPlace(place, typed), reason }
 }

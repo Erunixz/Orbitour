@@ -67,7 +67,7 @@ export function App() {
     const id = decodeURIComponent(tripMatch[1]!)
     if (fresh?.trip.id === id) {
       const notice = fresh.saved ? undefined : 'This plan could not be saved because the database was not reachable. It is gone once you leave this page.'
-      return <TripScreen trip={fresh.trip} notice={notice} />
+      return <TripScreen trip={fresh.trip} notice={notice} editable={fresh.saved} />
     }
     return <SavedTrip id={id} />
   }
@@ -97,7 +97,7 @@ function SavedTrip({ id }: { id: string }) {
       })
     return () => controller.abort()
   }, [id])
-  if (state.kind === 'ready') return <TripScreen trip={state.trip} />
+  if (state.kind === 'ready') return <TripScreen trip={state.trip} editable />
   return <Message title={state.kind === 'loading' ? null : 'Trip not found'} text={state.kind === 'loading' ? 'Loading the trip...' : state.message} />
 }
 

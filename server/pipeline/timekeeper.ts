@@ -47,12 +47,17 @@ export function schedule(stops: PlannedStop[], legs: Leg[], request: TripRequest
   return stops.map((planned, i) => {
     if (i > 0) t = roundUp5(t + (legs[i - 1]?.minutes ?? 0))
     if (planned.meal) t = Math.max(t, EARLIEST_MEAL_MIN[planned.meal])
-    const visitMin = visitMinutes(planned, request, slack)
+    const visitMin = planned.fixedMin ?? visitMinutes(planned, request, slack)
     const arrive = t
     t += visitMin
-    const { importance: _importance, meal: _meal, ...stop } = planned
+    const { importance: _importance, meal: _meal, fixedMin: _fixed, ...stop } = planned
     return { ...stop, visitMin, arrive: toTime(arrive), depart: toTime(t) }
   })
+}
+
+/** True for day warnings the audit wrote, so they can be replaced when a day is re-timed. */
+export function isAuditWarning(text: string): boolean {
+  return /^Runs \d+ min past |^\d+ stops is a lot |^.+ takes about \d+ min\.$|^Lunch lands at |^Free time from /.test(text)
 }
 
 export type AuditIssue = { kind: 'overrun' | 'too_many' | 'long_leg' | 'late_lunch' | 'free_time'; message: string }

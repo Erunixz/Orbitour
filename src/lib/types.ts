@@ -95,4 +95,13 @@ export type Trip = {
   updatedAt: string
   /** Schema version for migrations. */
   version: number
+  /** What the last edit or replan changed, and whether it can be undone. */
+  lastChange?: TripChange
+}
+
+export type TripChange = {
+  at: string
+  /** Short lines like "Removed Louvre Museum." */
+  summary: string[]
+  undoable: boolean
 }

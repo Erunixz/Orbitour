@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { healthSchema, type Health } from './health.js'
+import { placeSearchSchema, type DayEdit, type PlaceResult } from './edits.js'
 import { planEventSchema, type PlanEvent } from './planEvents.js'
 import { legsResponseSchema, tripListSchema, tripSchema, type LegsRequest, type LegsResponse, type TripList } from './schemas.js'
 import { SseParser } from './sse.js'
@@ -125,4 +126,35 @@ export async function streamPlan(
     if (done) break
   }
   if (!finished) throw new ApiRequestError(0, 'stream_ended', 'The connection closed before the plan was ready.')
+}
+
+async function sendJsonRequest<T>(path: string, method: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
+  return requestJson(path, schema, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  })
+}
+
+const tripPath = (id: string) => `/api/trips/${encodeURIComponent(id)}`
+
+/** Manual edits to one day. Returns the updated trip. */
+export function patchDay(tripId: string, day: number, edits: DayEdit[]): Promise<Trip> {
+  return sendJsonRequest(`${tripPath(tripId)}/days/${day}`, 'PATCH', { edits }, tripSchema)
+}
+
+/** A typed change like "drop the museum, slower morning". Returns the updated trip. */
+export function replanTrip(tripId: string, text: string): Promise<Trip> {
+  return sendJsonRequest(`${tripPath(tripId)}/replan`, 'POST', { text }, tripSchema)
+}
+
+/** Puts back the version before the last change. */
+export function undoTrip(tripId: string): Promise<Trip> {
+  return sendJsonRequest(`${tripPath(tripId)}/undo`, 'POST', undefined, tripSchema)
+}
+
+/** Places to add near the trip. Call on submit, not per keystroke (Nominatim policy). */
+export async function searchPlaces(q: string, tripId: string): Promise<PlaceResult[]> {
+  const params = new URLSearchParams({ q, tripId })
+  return (await requestJson(`/api/places/search?${params.toString()}`, placeSearchSchema)).places
 }
