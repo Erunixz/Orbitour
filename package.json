@@ -2,6 +2,24 @@
   "name": "orbitour",
   "private": true,
   "version": "0.1.0",
+  "description": "Plan a city trip with AI agents and code tools, then fly through it stop by stop on photorealistic 3D tiles.",
+  "author": "Erfan Zamani",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Erunixz/Orbitour.git"
+  },
+  "keywords": [
+    "trip-planner",
+    "three.js",
+    "react-three-fiber",
+    "3d-tiles",
+    "llm",
+    "agents",
+    "openstreetmap",
+    "wikipedia",
+    "typescript"
+  ],
   "type": "module",
   "engines": {
     "node": ">=20.12"
