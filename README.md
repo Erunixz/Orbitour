@@ -8,11 +8,13 @@
 
 **A trip planner where the 3D city is the interface.** Name a city and say what you like. A crew of code tools and two AI agents builds a day-by-day plan on real streets. You then fly through it one stop at a time over Google's photorealistic 3D tiles, and change it by hand or by typing what you want.
 
-![Home page with the interactive globe](docs/home.png)
-
-| Start from an example | Explore the plan stop by stop |
+| Fly from stop to stop over the real city | See the whole day's route from above |
 | --- | --- |
-| ![Example trips](docs/examples.png) | ![Trip view with sidebar and stop card](docs/trip.png)(docs/trip2.png) |
+| ![Day 1 at the Louvre: stop card and route over the 3D city](docs/trip.png) | ![Day 2 at the Eiffel Tower, with the day's pins and route](docs/trip2.png) |
+
+| Start on an interactive globe | Or pick an example trip |
+| --- | --- |
+| ![Home page with the interactive globe](docs/home.png) | ![Example trips](docs/examples.png) |
 
 ## Highlights
 
