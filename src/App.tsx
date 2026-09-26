@@ -44,15 +44,15 @@ export function App() {
   const path = useSyncExternalStore(subscribeLocation, readPath, readPath)
   const [planning, setPlanning] = useState<TripRequest | null>(null)
   // The trip just planned, so opening it needs no extra request.
-  const [fresh, setFresh] = useState<Trip | null>(null)
+  const [fresh, setFresh] = useState<{ trip: Trip; saved: boolean } | null>(null)
 
   const plan = useCallback((request: TripRequest) => {
     saveDraft(request)
     setPlanning(request)
   }, [])
 
-  const done = useCallback((trip: Trip) => {
-    setFresh(trip)
+  const done = useCallback((trip: Trip, saved: boolean) => {
+    setFresh({ trip, saved })
     setPlanning(null)
     navigate(`/trip/${encodeURIComponent(trip.id)}`)
   }, [])
@@ -65,7 +65,11 @@ export function App() {
   const tripMatch = /^\/trip\/([^/]+)\/?$/.exec(path)
   if (tripMatch) {
     const id = decodeURIComponent(tripMatch[1]!)
-    return fresh?.id === id ? <TripScreen trip={fresh} /> : <SavedTrip id={id} />
+    if (fresh?.trip.id === id) {
+      const notice = fresh.saved ? undefined : 'This plan could not be saved because the database was not reachable. It is gone once you leave this page.'
+      return <TripScreen trip={fresh.trip} notice={notice} />
+    }
+    return <SavedTrip id={id} />
   }
 
   if (planning) return <PlanningScreen request={planning} onDone={done} onBack={() => setPlanning(null)} />

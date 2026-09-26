@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type RefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Vector3 } from 'three'
+import { isStart, stopLabel } from '../lib/stops'
 import type { Stop } from '../lib/types'
 
 // Pins are plain DOM buttons in one overlay layer. A small component inside the
@@ -23,7 +24,8 @@ export function PinLayer({ stops, color, current, onSelect, pinRefs }: LayerProp
   return (
     <div className="pin-layer">
       {stops.map((stop, i) => {
-        const state = current === null ? '' : current === i ? ' is-current' : ' is-dim'
+        const state = (current === null ? '' : current === i ? ' is-current' : ' is-dim') + (isStart(stop) ? ' is-start' : '')
+        const label = stopLabel(stops, i)
         return (
           <button
             key={stop.id}
@@ -34,11 +36,11 @@ export function PinLayer({ stops, color, current, onSelect, pinRefs }: LayerProp
             className={`pin${state}`}
             style={{ '--pin-color': color, visibility: 'hidden' } as CSSProperties}
             onClick={() => onSelect(i)}
-            aria-label={`Stop ${i + 1}: ${stop.name}`}
+            aria-label={isStart(stop) ? `Start: ${stop.name}` : `Stop ${label}: ${stop.name}`}
             title={stop.name}
           >
             <span className="pin-body">
-              <span className="pin-number">{i + 1}</span>
+              <span className="pin-number">{label}</span>
             </span>
           </button>
         )

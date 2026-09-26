@@ -75,7 +75,7 @@ export function audit(stops: Stop[], legs: Leg[], planned: PlannedStop[], reques
       message: `Runs ${toMinutes(lastVisit.depart) - end} min past ${request.endTime}.`,
     })
   }
-  const sights = planned.filter((p) => !p.meal).length
+  const sights = planned.filter((p) => !p.meal && p.role !== 'start').length
   if (sights > perDay + 2) issues.push({ kind: 'too_many', message: `${sights} stops is a lot for one day.` })
   legs.forEach((leg, i) => {
     if (leg.minutes > LONG_LEG_MIN) {
@@ -103,7 +103,7 @@ export function audit(stops: Stop[], legs: Leg[], planned: PlannedStop[], reques
 export function dropCandidate(planned: PlannedStop[]): number {
   let best = -1
   planned.forEach((p, i) => {
-    if (p.mustSee || p.meal) return
+    if (p.mustSee || p.meal || p.role === 'start') return
     if (best === -1 || p.importance < planned[best]!.importance) best = i
   })
   return best

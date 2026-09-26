@@ -56,6 +56,8 @@ export type Stop = LatLon & {
   mustSee: boolean
   /** Surface height above the WGS84 ellipsoid, found by raycast in the app. */
   groundHeightM?: number
+  /** "start": where the day begins (the user's starting point). Not a place to visit. */
+  role?: 'start'
 }
 
 export type LegStep = { mode: 'walk' | 'transit'; meters: number; minutes: number; line?: string }

@@ -29,8 +29,10 @@ export function StatusPage() {
   return (
     <main className="shell">
       <header>
-        <h1>[APP_NAME]</h1>
-        <p className="muted">Server status. <a href="/">Back to the map</a></p>
+        <h1>Orbitour</h1>
+        <p className="muted">
+          Server status. <a href="/">Back to planning</a>
+        </p>
       </header>
 
       <section className="card" aria-live="polite">
@@ -59,6 +61,11 @@ function HealthView({ health }: { health: Health }) {
       <p>
         Server is up. Trip store: <strong>{health.store === 'mongo' ? 'MongoDB' : 'in memory'}</strong>.
       </p>
+      {health.database === 'ok' && <p className="ok">The database is reachable.</p>}
+      {health.database === 'unreachable' && (
+        <p className="warn">The database is not reachable. Check MONGODB_URI and that your IP is allowed in Atlas.</p>
+      )}
+      {health.database === 'memory' && <p className="muted">Without MONGODB_URI, trips are lost when the server restarts.</p>}
       {health.missing.length === 0 ? (
         <p className="ok">All settings are configured.</p>
       ) : (

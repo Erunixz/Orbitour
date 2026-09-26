@@ -85,7 +85,21 @@ Each plan logs its LLM calls and token counts on the server, never the keys or t
 
 Nominatim's usage policy does not allow search-as-you-type, so the city field suggests from a built-in list and the server looks the city up once, when planning starts.
 
-Planned trips are kept in server memory for now, so a server restart clears them. Saved trips come with the next phase.
+## Saved trips (MongoDB)
+
+Every planned trip is saved as one document, and the home page lists recent trips to open or delete.
+
+Without `MONGODB_URI`, trips live in server memory and are gone after a restart. To keep them, use a free MongoDB Atlas cluster:
+
+1. Create a free (M0) cluster at mongodb.com/atlas.
+2. Under Database Access, add a database user with a password.
+3. Under Network Access, allow your IP address.
+4. Copy the connection string (Connect, Drivers). Put it in `.env` as `MONGODB_URI`, with your password filled in. `MONGODB_DB` sets the database name (default `tripplanner`).
+5. Restart `npm run dev`. http://localhost:5173/status says whether the database is reachable.
+
+With a database, upstream answers (places, Wikipedia, routes, weather) are also cached there, so repeat plans in the same city make fewer outside requests. MongoDB deletes old cache entries by itself.
+
+If the database is unreachable, the saved trips list shows an error with a retry, and a newly planned trip is still shown (with a note that it was not saved) instead of being lost.
 
 ## Using the trip view
 

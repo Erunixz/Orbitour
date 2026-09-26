@@ -1,10 +1,10 @@
 import type { FailEvent, StageEvent, TripEvent } from '../../src/lib/planEvents.js'
-import { tripRequestSchema } from '../../src/lib/schemas.js'
+import { tripIdSchema, tripRequestSchema, type TripList } from '../../src/lib/schemas.js'
 import { ApiError, parseBody, readJson, sendJson, type Req, type Res } from '../http.js'
 import { PlanError, type PipelineDeps } from '../pipeline/context.js'
 import { planTrip } from '../pipeline/pipeline.js'
 import { openSse } from '../sse.js'
-import type { TripStore } from '../store/tripStore.js'
+import { StoreUnavailableError, type TripStore } from '../store/tripStore.js'
 
 export type TripRouteDeps = PipelineDeps & { store: TripStore }
 
@@ -28,11 +28,17 @@ export async function handlePlanTrip(req: Req, res: Res, deps: TripRouteDeps): P
   const started = Date.now()
   try {
     const { trip, usage } = await planTrip(request, deps, (event: StageEvent) => stream.send('stage', event), controller.signal)
-    await deps.store.save(trip)
+    // A plan costs money to make, so a database problem must not lose it: send it anyway.
+    let saved = true
+    try {
+      await deps.store.save(trip)
+    } catch {
+      saved = false
+    }
     deps.log(
       `[plan] ${trip.days.length} days, ${trip.days.reduce((n, d) => n + d.stops.length, 0)} stops in ${Date.now() - started}ms, llm calls=${usage.calls} in=${usage.inputTokens} out=${usage.outputTokens}`,
     )
-    const done: TripEvent = { type: 'trip', trip, usage }
+    const done: TripEvent = { type: 'trip', trip, usage, saved }
     stream.send('trip', done)
   } catch (error) {
     const fail: FailEvent =
@@ -46,12 +52,44 @@ export async function handlePlanTrip(req: Req, res: Res, deps: TripRouteDeps): P
   }
 }
 
+const RECENT_LIMIT = 20
+
+/** Runs a store call, turning an unreachable database into a clear 503. */
+async function withStore<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    if (error instanceof StoreUnavailableError) throw new ApiError(503, 'store_unavailable', error.message)
+    throw error
+  }
+}
+
+function checkId(id: string): string {
+  if (!tripIdSchema.safeParse(id).success) throw new ApiError(400, 'invalid_id', 'That is not a valid trip id.')
+  return id
+}
+
+/** GET /api/trips: recent saved trips. */
+export async function handleListTrips(res: Res, deps: { store: TripStore }): Promise<void> {
+  const trips = await withStore(() => deps.store.list(RECENT_LIMIT))
+  const body: TripList = { trips, store: deps.store.kind }
+  sendJson(res, 200, body)
+}
+
 /** GET /api/trips/:id */
 export async function handleGetTrip(res: Res, id: string, deps: { store: TripStore }): Promise<void> {
-  const trip = await deps.store.get(id)
+  const trip = await withStore(() => deps.store.get(checkId(id)))
   if (!trip) {
-    const hint = deps.store.kind === 'memory' ? ' Trips are kept in memory for now, so a server restart clears them.' : ''
+    const hint = deps.store.kind === 'memory' ? ' Without a database, trips are kept in memory, so a server restart clears them.' : ''
     throw new ApiError(404, 'trip_not_found', `No trip with that id.${hint}`)
   }
   sendJson(res, 200, trip)
+}
+
+/** DELETE /api/trips/:id */
+export async function handleDeleteTrip(res: Res, id: string, deps: { store: TripStore }): Promise<void> {
+  const deleted = await withStore(() => deps.store.delete(checkId(id)))
+  if (!deleted) throw new ApiError(404, 'trip_not_found', 'No trip with that id.')
+  res.statusCode = 204
+  res.end()
 }

@@ -20,6 +20,8 @@ export const healthSchema = z.object({
   status: z.literal('ok'),
   time: z.string(),
   store: z.enum(['memory', 'mongo']),
+  /** Whether the trip database answered. "memory" when there is none. */
+  database: z.enum(['memory', 'ok', 'unreachable']),
   keys: z.record(z.enum(keyNames), z.boolean()),
   missing: z.array(z.enum(keyNames)),
 })

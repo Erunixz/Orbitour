@@ -32,7 +32,13 @@ export const stageEventSchema = z.object({
 
 export const usageSchema = z.object({ calls: z.number(), inputTokens: z.number(), outputTokens: z.number() })
 
-export const tripEventSchema = z.object({ type: z.literal('trip'), trip: tripSchema, usage: usageSchema })
+export const tripEventSchema = z.object({
+  type: z.literal('trip'),
+  trip: tripSchema,
+  usage: usageSchema,
+  /** False when the plan is fine but the database could not store it. */
+  saved: z.boolean(),
+})
 
 export const failEventSchema = z.object({ type: z.literal('fail'), code: z.string(), message: z.string() })
 

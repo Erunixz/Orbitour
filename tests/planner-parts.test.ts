@@ -59,6 +59,8 @@ describe('place rules', () => {
     expect(isDestination('Lisbon', 'Capital and largest city of Portugal')).toBe(false)
     expect(isDestination('Portuguese Football Federation', 'Governing body of football in Portugal')).toBe(false)
     expect(isDestination('Lisbon City Hall', 'City hall in Lisbon')).toBe(true)
+    expect(isDestination('2025 Ascensor da Glória derailment', 'Funicular accident in Lisbon')).toBe(false)
+    expect(isDestination('Some Bridge', 'Site of a 1966 collapse')).toBe(false)
   })
 
   it('guesses the kind of stop', () => {
@@ -73,6 +75,7 @@ describe('place rules', () => {
     expect(guessKind('Santa Justa Lift', 'Municipal elevator in Lisbon, Portugal')).toBe('viewpoint')
     expect(kindFromOsm('tourism', 'museum')).toBe('museum')
     expect(osmSummary('place_of_worship', 'Saint X, Rue Y, Paris, France')).toBe('Place of worship in Rue Y, Paris.')
+    expect(osmSummary('hotel', 'Hotel Z, 123, Rua 1º de Dezembro, Lisbon, Portugal')).toBe('Hotel in Rua 1º de Dezembro, Lisbon.')
   })
 
   it('removes a disambiguation suffix from names', () => {

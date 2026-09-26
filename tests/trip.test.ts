@@ -5,6 +5,7 @@ import { decodePolyline } from '../src/lib/polyline'
 import { tripSchema } from '../src/lib/schemas'
 import { fixtureNames, FixtureError, loadFixture } from '../src/trip/fixtures'
 import { formatDate } from '../src/trip/format'
+import { stopLabel, visitCount, visitNumber } from '../src/lib/stops'
 import { backView, dayView, hashForView, nextView, stopView, viewFromHash, type View } from '../src/trip/tripNav'
 
 const counts = [3, 2]
@@ -117,5 +118,15 @@ describe('trip schema', () => {
     expect(formatDate(undefined)).toBeNull()
     expect(formatDate('not a date')).toBeNull()
     expect(formatDate('2026-10-03')).toMatch(/3/)
+  })
+})
+
+describe('stop numbering', () => {
+  it('labels the starting point S and numbers the places after it from 1', () => {
+    const withStart = [{ role: 'start' as const }, {}, {}]
+    expect([0, 1, 2].map((i) => stopLabel(withStart, i))).toEqual(['S', '1', '2'])
+    expect(visitNumber(withStart, 0)).toBeNull()
+    expect(visitCount(withStart)).toBe(2)
+    expect([0, 1].map((i) => stopLabel([{}, {}], i))).toEqual(['1', '2'])
   })
 })

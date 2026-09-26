@@ -16,6 +16,7 @@ const NOT_DESTINATION = [
   /\b(police|gendarmerie|army|navy|regiment|military unit|court|legislature|government|governing body|federation|political party|organi[sz]ation|association|sports club|football club|team)\b/,
   /\b(footballer|politician|actor|actress|singer|writer|painter|architect|businessman|businesswoman|journalist|musician|athlete|player|born)\b/,
   /\b(festival|battle|siege|riot|attack|bombing|shooting|protest|election|treaty|event|competition|tournament|race)\b/,
+  /\b(accident|derailment|disaster|crash|collapse|earthquake|explosion|massacre|shipwreck|incident|murder)\b/,
   /\b(school|college|lycee|hospital|clinic|prison|headquarters|office building|apartment|residential|car park|parking)\b/,
   /\b(album|song|film|novel|television|tv series|video game|band)\b/,
 ]
@@ -27,7 +28,8 @@ const plain = (s: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
 
-const NOT_DESTINATION_TITLE = [/^list of /i, /^(history|geography|culture|timeline) of /i, /\bstation$/i]
+// Events are usually titled with their year first, like "2025 ... derailment".
+const NOT_DESTINATION_TITLE = [/^list of /i, /^(history|geography|culture|timeline) of /i, /\bstation$/i, /^\d{4} /]
 
 /** True for places worth visiting: sights, museums, parks and so on. */
 export function isDestination(title: string, description: string): boolean {
@@ -73,7 +75,14 @@ export function kindFromOsm(category: string, type: string): StopKind {
 /** "Museum in Paris" style summary for a place that has no article. Written from data, not by the LLM. */
 export function osmSummary(type: string, displayName: string): string {
   const label = type ? type.replace(/_/g, ' ') : 'place'
-  const area = displayName.split(',').slice(1, 3).map((s) => s.trim()).filter(Boolean).join(', ')
+  // Skip house numbers so "Hotel, 123, Rua X, Lisbon" reads "Hotel in Rua X, Lisbon".
+  const area = displayName
+    .split(',')
+    .slice(1)
+    .map((s) => s.trim())
+    .filter((s) => s && !/^\d+[a-z]?$/i.test(s))
+    .slice(0, 2)
+    .join(', ')
   const text = area ? `${label} in ${area}.` : `${label}.`
   return text.charAt(0).toUpperCase() + text.slice(1)
 }

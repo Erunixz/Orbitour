@@ -85,8 +85,12 @@ const replySchema = z.object({
 })
 
 /** Plain message for an OpenAI HTTP error. OpenAI's own text can echo part of the key, so it is never shown. */
-function describeStatus(status: number | null): string {
+function describeStatus(status: number | null, detail = ''): string {
   if (status === null) return 'OpenAI did not respond.'
+  // Only the error code is read from OpenAI's reply, never its message.
+  if (status === 429 && /insufficient_quota|credit_balance/.test(detail)) {
+    return 'Your OpenAI account has no credit left. Add credit under Billing at platform.openai.com, then try again.'
+  }
   if (status === 401) return 'OpenAI rejected the API key (401). Check OPENAI_API_KEY.'
   if (status === 403) return 'OpenAI refused access for this key (403).'
   if (status === 404) return 'OpenAI does not know that model (404). Check the LLM_MODEL_* settings.'
@@ -141,7 +145,7 @@ export function createLlm(env: Env, deps: Deps = {}): Llm {
     } catch (error) {
       const status = error instanceof UpstreamError ? error.status : null
       log(`[llm] ${request.agent} model=${model} failed status=${status ?? 'none'} after ${now() - started}ms`)
-      throw new LlmError('upstream', describeStatus(status))
+      throw new LlmError('upstream', describeStatus(status, error instanceof UpstreamError ? error.message : ''))
     }
 
     const parsed = replySchema.safeParse(await res.json().catch(() => null))

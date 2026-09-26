@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { healthSchema, type Health } from './health.js'
 import { planEventSchema, type PlanEvent } from './planEvents.js'
-import { legsResponseSchema, tripSchema, type LegsRequest, type LegsResponse } from './schemas.js'
+import { legsResponseSchema, tripListSchema, tripSchema, type LegsRequest, type LegsResponse, type TripList } from './schemas.js'
 import { SseParser } from './sse.js'
 import type { Trip, TripRequest } from './types.js'
 
@@ -51,6 +51,24 @@ export function fetchLegs(body: LegsRequest, signal?: AbortSignal): Promise<Legs
     body: JSON.stringify(body),
     signal,
   })
+}
+
+export function fetchTrips(signal?: AbortSignal): Promise<TripList> {
+  return requestJson('/api/trips', tripListSchema, { signal })
+}
+
+export async function deleteTrip(id: string): Promise<void> {
+  let res: Response
+  try {
+    res = await fetch(`/api/trips/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  } catch {
+    throw new ApiRequestError(0, 'network', 'Could not reach the server.')
+  }
+  // Already gone counts as done.
+  if (res.ok || res.status === 404) return
+  const parsed = errorSchema.safeParse(await res.json().catch(() => null))
+  if (parsed.success) throw new ApiRequestError(res.status, parsed.data.error.code, parsed.data.error.message)
+  throw new ApiRequestError(res.status, 'http', `Server replied with ${res.status}.`)
 }
 
 export function fetchTrip(id: string, signal?: AbortSignal): Promise<Trip> {

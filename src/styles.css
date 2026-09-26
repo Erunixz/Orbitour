@@ -778,6 +778,13 @@ a {
   margin-bottom: 1.25rem;
 }
 
+.brand {
+  margin: 0 0 0.25rem;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .home-header h1 {
   font-size: 2rem;
 }
@@ -1094,4 +1101,94 @@ a {
 .plan-ready {
   font-weight: 600;
   color: var(--ok);
+}
+
+/* Saved trips */
+
+.saved-trips {
+  margin-top: 1.25rem;
+}
+
+.saved-note {
+  font-size: 0.85rem;
+}
+
+.saved-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.saved-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.saved-row:first-child {
+  border-top: 0;
+}
+
+.saved-open {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  align-content: center;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.saved-open:hover .saved-title {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.saved-title {
+  font-weight: 600;
+}
+
+.saved-meta {
+  font-size: 0.85rem;
+}
+
+.saved-confirm {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.saved-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+.trip-notice {
+  margin: 0.25rem 1.1rem 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 4px solid var(--danger);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  font-size: 0.85rem;
+}
+
+.trip-header .trip-notice {
+  margin: 0.4rem 0 0;
+}
+
+/* Starting point: a dark "S" marker, so it reads as "you begin here" rather than a place to visit. */
+
+.pin.is-start .pin-body::before {
+  background: #1c2330;
+}
+
+.stop-num.is-start {
+  background: #1c2330;
 }

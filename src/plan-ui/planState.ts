@@ -20,6 +20,8 @@ export type PlanView = {
   rejected: { title: string; reason: string }[]
   issues: { target: 'scout' | 'timekeeper'; complaint: string }[]
   trip: Trip | null
+  /** False when the plan could not be stored. */
+  saved: boolean
   usage: LlmUsage | null
   failure: { code: string; message: string } | null
 }
@@ -31,11 +33,11 @@ export function initialPlanView(): PlanView {
     StageId,
     StageView
   >
-  return { stages, area: null, stops: [], days: null, rejected: [], issues: [], trip: null, usage: null, failure: null }
+  return { stages, area: null, stops: [], days: null, rejected: [], issues: [], trip: null, saved: true, usage: null, failure: null }
 }
 
 export function reducePlan(view: PlanView, event: PlanEvent): PlanView {
-  if (event.type === 'trip') return { ...view, trip: event.trip, usage: event.usage }
+  if (event.type === 'trip') return { ...view, trip: event.trip, saved: event.saved, usage: event.usage }
   if (event.type === 'fail') return { ...view, failure: { code: event.code, message: event.message } }
 
   const prev = view.stages[event.stage]

@@ -1,5 +1,6 @@
 import { useId, useState, type FormEvent, type ReactNode } from 'react'
 import type { Budget, Meal, Pace, Party, TravelMode, TripRequest } from '../lib/types'
+import { SavedTrips } from './SavedTrips'
 
 // Home: describe the trip. City names are suggested from a built-in list;
 // the server looks the city up once, when planning starts.
@@ -63,6 +64,7 @@ export function Home({ initial, onPlan, sampleHref }: Props) {
   return (
     <main className="home">
       <header className="home-header">
+        <p className="brand">Orbitour</p>
         <h1>Plan a trip on a 3D map</h1>
         <p className="muted">
           Name a city and say what you like. A crew of code tools and two AI agents builds a day-by-day plan on real
@@ -224,6 +226,8 @@ export function Home({ initial, onPlan, sampleHref }: Props) {
           Plan my trip
         </button>
       </form>
+
+      <SavedTrips />
 
       <p className="muted home-foot">
         Want a look first? <a href={sampleHref}>Open a sample trip</a>. <a href="/status">Server status</a>

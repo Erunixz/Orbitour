@@ -11,7 +11,7 @@ import { initialPlanView, reducePlan, type StopPreview } from './planState'
 
 type Props = {
   request: TripRequest
-  onDone: (trip: Trip) => void
+  onDone: (trip: Trip, saved: boolean) => void
   onBack: () => void
 }
 
@@ -33,6 +33,7 @@ const asStop = (p: StopPreview): Stop => ({
   arrive: '00:00',
   depart: '00:00',
   mustSee: false,
+  ...(p.id.startsWith('start-') ? { role: 'start' as const } : {}),
 })
 
 const noop = () => {}
@@ -59,9 +60,9 @@ export function PlanningScreen({ request, onDone, onBack }: Props) {
   useEffect(() => {
     if (!view.trip) return
     const trip = view.trip
-    const timer = setTimeout(() => doneRef.current(trip), 900)
+    const timer = setTimeout(() => doneRef.current(trip, view.saved), 900)
     return () => clearTimeout(timer)
-  }, [view.trip])
+  }, [view.trip, view.saved])
 
   const { stops, legs } = useMemo(() => {
     if (view.days) {

@@ -95,6 +95,13 @@ describe('LLM wrapper', () => {
     expect(bodies).toHaveLength(2)
   })
 
+  it('says plainly when the account has no credit', async () => {
+    const broke = () => new Response('{"error":{"type":"insufficient_quota","code":"credit_balance_exhausted"}}', { status: 429 })
+    const { impl } = fakeFetch([broke, broke, broke])
+    const error = await createLlm(env, { fetchImpl: impl, retry: { sleep: noSleep } }).call(request).catch((e: unknown) => e)
+    expect((error as LlmError).message).toMatch(/no credit left/)
+  })
+
   it('treats a refusal as a clear failure', async () => {
     const refusal = () =>
       new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: null, refusal: 'No.' } }] }), { status: 200 })

@@ -43,7 +43,7 @@ export function criticInput(request: TripRequest, label: string, days: ReviewDay
           arrive: s.arrive,
           depart: s.depart,
           mustSee: s.mustSee,
-          about: s.summary.slice(0, 160),
+          about: s.role === 'start' ? 'Where the day starts (the traveller chose it). Not a place to visit.' : s.summary.slice(0, 160),
         })),
         legs: day.legs.map((l) => ({ from: names.get(l.fromId) ?? l.fromId, to: names.get(l.toId) ?? l.toId, mode: l.mode, minutes: l.minutes })),
       }

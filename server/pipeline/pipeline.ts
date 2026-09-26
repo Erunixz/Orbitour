@@ -1,10 +1,11 @@
 import type { LlmUsage } from '../../src/lib/planEvents.js'
 import type { Day, Trip, TripRequest } from '../../src/lib/types.js'
 import { runCandidates } from './candidates.js'
-import { PlanError, stage, type Emit, type PipelineDeps, type PlanState } from './context.js'
+import { nominatimSource, PlanError, stage, type Emit, type PipelineDeps, type PlannedStop, type PlanState } from './context.js'
 import { runCritic, type CriticIssue } from './critic.js'
 import { runDaySplit } from './daySplit.js'
 import { runFood, type FoodResult } from './food.js'
+import { osmSummary } from './places.js'
 import { legKey, legsFor, runRouter } from './router.js'
 import { runScout, STOPS_PER_DAY } from './scout.js'
 import { runSurveyor } from './surveyor.js'
@@ -59,7 +60,7 @@ export async function planTrip(
       if (stops.length === 0) throw new PlanError('no_stops', 'None of the picks could be verified, so there is nothing to plan.')
       checkAborted(signal)
       const split = runDaySplit(stops, request.days, perDay, start ?? survey.center, emit)
-      const routed = await runRouter(split, request, start, deps, emit)
+      const routed = await runRouter(split, request, start, deps, emit, survey.startFrom?.place ? startStopFor(survey.startFrom) : null)
       checkAborted(signal)
       food = await runFood(routed, request, survey, deps, emit)
       checkAborted(signal)
@@ -123,6 +124,25 @@ export async function planTrip(
   return { trip, usage }
 }
 
+/** The user's starting point as the first stop of a day. Ids differ per day so every stop id is unique. */
+function startStopFor(startFrom: NonNullable<PlanState['survey']['startFrom']>) {
+  const place = startFrom.place!
+  return (day: number): PlannedStop => ({
+    id: `start-${day + 1}`,
+    name: place.name,
+    kind: 'lodging',
+    lat: place.lat,
+    lon: place.lon,
+    summary: osmSummary(place.type, place.displayName),
+    reason: `Your starting point ("${startFrom.typed}").`,
+    photo: null,
+    sources: place.osmUrl ? [nominatimSource(place.osmUrl)] : [],
+    mustSee: false,
+    importance: 5,
+    role: 'start',
+  })
+}
+
 function dayOf(issue: CriticIssue, days: TimedDay[]): number {
   if (!issue.stopId) return 0
   const d = days.findIndex((day) => day.stops.some((s) => s.id === issue.stopId))
@@ -150,13 +170,15 @@ async function applyIssues(
     if (issue.target === 'scout') {
       needScout = true
       state.scoutFeedback.push(stop ? `${issue.complaint} (about ${stop.name})` : issue.complaint)
-      // Never swap out a must-see stop, whatever the Critic says.
-      if (stop && !stop.mustSee && issue.action === 'replace_stop') state.banned.add(stop.name.toLowerCase())
+      // Never swap out a must-see stop or the starting point, whatever the Critic says.
+      if (stop && !stop.mustSee && stop.role !== 'start' && issue.action === 'replace_stop') {
+        state.banned.add(stop.name.toLowerCase())
+      }
       continue
     }
     if (issue.action === 'slow_down') {
       slack.set(d, (slack.get(d) ?? 1) * SLOW_DOWN)
-    } else if (issue.action === 'drop_stop' && stop && !stop.mustSee && !stop.meal) {
+    } else if (issue.action === 'drop_stop' && stop && !stop.mustSee && !stop.meal && stop.role !== 'start') {
       const day = food.days[d]
       if (!day) continue
       const stops = day.stops.filter((s) => s.id !== stop.id)

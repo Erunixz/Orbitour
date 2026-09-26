@@ -1,4 +1,5 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
+import { isStart, stopLabel, visitCount } from '../lib/stops'
 import type { Day, Leg, Trip } from '../lib/types'
 import { usePrefersReducedMotion } from '../map/hooks'
 import { dayColor } from './dayColors'
@@ -11,7 +12,7 @@ import type { View } from './tripNav'
 const colorVar = (day: number) => ({ '--day-color': dayColor(day) }) as CSSProperties
 
 export function TripHeading({ trip }: { trip: Trip }) {
-  const stopCount = trip.days.reduce((n, d) => n + d.stops.length, 0)
+  const stopCount = trip.days.reduce((n, d) => n + visitCount(d.stops), 0)
   return (
     <div className="trip-heading">
       <h1>{trip.title}</h1>
@@ -100,7 +101,7 @@ export function DayPanel({ day, dayIndex, view, onOverview, onSelectStop }: DayP
               <span className="stop-row-main">
                 <span className="stop-row-name">Day {dayIndex + 1} overview</span>
                 <span className="stop-row-sub">
-                  {first?.arrive} to {last?.depart} · {day.stops.length} stops
+                  {first?.arrive} to {last?.depart} · {visitCount(day.stops)} stops
                 </span>
               </span>
             </button>
@@ -117,19 +118,25 @@ export function DayPanel({ day, dayIndex, view, onOverview, onSelectStop }: DayP
                   aria-current={isCurrent ? 'step' : undefined}
                   onClick={() => onSelectStop(i)}
                 >
-                  <span className="stop-num" aria-hidden="true">
-                    {i + 1}
+                  <span className={`stop-num${isStart(stop) ? ' is-start' : ''}`} aria-hidden="true">
+                    {stopLabel(day.stops, i)}
                   </span>
                   <span className="stop-row-main">
                     <span className="stop-row-name">{stop.name}</span>
                     <span className="stop-row-sub">
-                      {kindLabels[stop.kind]}
+                      {isStart(stop) ? 'Start point' : kindLabels[stop.kind]}
                       {stop.mustSee && ' · Must see'}
                     </span>
                   </span>
                   <span className="stop-row-time">
-                    <span>{stop.arrive}</span>
-                    <span className="muted">{stop.depart}</span>
+                    {isStart(stop) ? (
+                      <span>{stop.depart}</span>
+                    ) : (
+                      <>
+                        <span>{stop.arrive}</span>
+                        <span className="muted">{stop.depart}</span>
+                      </>
+                    )}
                   </span>
                 </button>
                 {leg && i < day.stops.length - 1 && <LegRow leg={leg} />}

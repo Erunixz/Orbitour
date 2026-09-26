@@ -82,21 +82,27 @@ export async function legsFor(
 
 export type RoutedDay = { stops: PlannedStop[]; legs: Leg[] }
 
+/**
+ * `startStop` makes each day begin at the user's starting point, with a leg from
+ * there to the first place. It is added to days that have places to visit.
+ */
 export async function runRouter(
   days: PlannedStop[][],
   request: TripRequest,
   start: LatLon | null,
   deps: PipelineDeps,
   emit: Emit,
+  startStop: ((day: number) => PlannedStop) | null = null,
 ): Promise<RoutedDay[]> {
   const s = stage(emit, 'router')
   s.start(deps.routes ? 'Ordering stops and routing on real streets...' : 'Ordering stops. No routes key, so travel times are estimates.')
   const out: RoutedDay[] = []
   for (const [i, stops] of days.entries()) {
-    const ordered = await orderDay(stops, start, request, deps)
+    const visits = await orderDay(stops, start, request, deps)
+    const ordered = startStop && visits.length > 0 ? [startStop(i), ...visits] : visits
     const legs = await legsFor(ordered, request, deps)
     out.push({ stops: ordered, legs })
-    s.progress(`Day ${i + 1}: ${ordered.length} stops, ${legs.reduce((n, l) => n + l.minutes, 0)} min of travel.`)
+    s.progress(`Day ${i + 1}: ${visits.length} stops, ${legs.reduce((n, l) => n + l.minutes, 0)} min of travel.`)
   }
   const estimated = out.flatMap((d) => d.legs).filter((l) => l.estimated).length
   s.done(estimated > 0 ? `Routed every day. ${estimated} legs are straight-line estimates.` : 'Routed every day on real streets.', {

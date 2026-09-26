@@ -75,6 +75,7 @@ export const stopSchema = latLonSchema.extend({
   depart: hhmm,
   mustSee: z.boolean(),
   groundHeightM: z.number().optional(),
+  role: z.literal('start').optional(),
 })
 
 export const daySchema = z.object({
@@ -97,6 +98,27 @@ export const tripSchema = z.object({
   updatedAt: z.string(),
   version: z.number().int().min(1),
 })
+
+/** One row of the saved trips list. */
+export const tripSummarySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  city: z.string(),
+  days: z.number(),
+  updatedAt: z.string(),
+})
+
+export const tripListSchema = z.object({
+  trips: z.array(tripSummarySchema),
+  /** "memory" means trips are lost when the server restarts. */
+  store: z.enum(['memory', 'mongo']),
+})
+
+export type TripSummary = z.infer<typeof tripSummarySchema>
+export type TripList = z.infer<typeof tripListSchema>
+
+/** Trip ids are UUIDs or short slugs. Anything else is refused before it reaches the store. */
+export const tripIdSchema = z.string().regex(/^[\w-]{1,64}$/)
 
 export const legsRequestSchema = z.object({
   stops: z

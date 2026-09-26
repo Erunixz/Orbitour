@@ -132,6 +132,32 @@ describe('planning pipeline', () => {
     if (toMin(lastVisit.depart) > toMin('13:00')) expect(day.warnings.some((w) => /past 13:00/.test(w))).toBe(true)
   })
 
+  it('starts each day at the starting point, with a leg to the first place', async () => {
+    const nominatim = fakeNominatim({ 'Hotel Sol': place('Hotel Sol', at(-100, -100), { category: 'tourism', type: 'hotel' }) })
+    const llm = fakeLlm({ scout: [scoutPicks(allTitles)], critic: [{ ok: true, issues: [] }] })
+    const { trip } = await planTrip({ ...baseRequest, startFrom: 'Hotel Sol' }, fakeDeps({ llm, nominatim }), () => {})
+    expect(() => tripSchema.parse(trip)).not.toThrow()
+    trip.days.forEach((day, d) => {
+      const [start, first] = day.stops
+      expect(start).toMatchObject({ id: `start-${d + 1}`, role: 'start', name: 'Hotel Sol', arrive: '09:30', depart: '09:30', visitMin: 0 })
+      expect(first!.role).toBeUndefined()
+      expect(day.legs[0]).toMatchObject({ fromId: start!.id, toId: first!.id })
+      expect(toMin(first!.arrive)).toBeGreaterThanOrEqual(toMin('09:30') + day.legs[0]!.minutes)
+    })
+    expect(trip.lodging?.name).toBe('Hotel Sol')
+  })
+
+  it('never drops the starting point when a day runs long', async () => {
+    const nominatim = fakeNominatim({ 'Hotel Sol': place('Hotel Sol', at(-100, -100)) })
+    const llm = fakeLlm({ scout: [scoutPicks(allTitles.slice(0, 5))], critic: [{ ok: true, issues: [] }] })
+    const { trip } = await planTrip(
+      { ...baseRequest, days: 1, pace: 'packed', endTime: '11:00', startFrom: 'Hotel Sol' },
+      fakeDeps({ llm, nominatim }),
+      () => {},
+    )
+    expect(trip.days[0]!.stops[0]?.role).toBe('start')
+  })
+
   it('fails clearly at the Scout when there is no OpenAI key', async () => {
     const { events, emit } = recorder()
     const error = await planTrip(baseRequest, fakeDeps({ llm: fakeLlm({}, false) }), emit).catch((e: unknown) => e)

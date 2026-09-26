@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import { MemoryCache } from './cache.js'
+import { cacheCollection, LayeredCache, MemoryCache, MongoCache, type Cache, type CacheDoc } from './cache.js'
 import { hasValue, type Env } from './env.js'
 import { ApiError, sendError, sendJson, type Req, type Res } from './http.js'
 import { createLlm } from './llm/openai.js'
 import { buildHealth } from './routes/health.js'
 import { handleLegs } from './routes/legs.js'
-import { handleGetTrip, handlePlanTrip, type TripRouteDeps } from './routes/trips.js'
-import { MemoryTripStore } from './store/tripStore.js'
+import { handleDeleteTrip, handleGetTrip, handleListTrips, handlePlanTrip, type TripRouteDeps } from './routes/trips.js'
+import { connectMongo } from './store/mongo.js'
+import { MemoryTripStore, MongoTripStore, tripCollection, type TripDoc, type TripStore } from './store/tripStore.js'
 import { createRoutesClient } from './upstream/googleRoutes.js'
 import { createNominatim } from './upstream/nominatim.js'
 import { createWeather } from './upstream/openMeteo.js'
@@ -30,9 +31,22 @@ function compile(path: string): { pattern: RegExp; keys: string[] } {
 
 export type AppDeps = TripRouteDeps
 
+/** MongoDB for trips and the upstream cache when MONGODB_URI is set, memory otherwise. */
+function storage(env: Env, log: (message: string) => void): { cache: Cache; store: TripStore } {
+  if (!hasValue(env, 'MONGODB_URI')) return { cache: new MemoryCache(), store: new MemoryTripStore() }
+  const dbName = hasValue(env, 'MONGODB_DB') ? env.MONGODB_DB!.trim() : 'tripplanner'
+  const mongo = connectMongo(env.MONGODB_URI!.trim(), dbName, log)
+  const cache = new LayeredCache(
+    new MemoryCache(),
+    new MongoCache(async () => cacheCollection((await mongo.db()).collection<CacheDoc>('cache')), log),
+  )
+  const store = new MongoTripStore(async () => tripCollection((await mongo.db()).collection<TripDoc>('trips')), log, mongo.ping)
+  return { cache, store }
+}
+
 export function defaultDeps(env: Env): AppDeps {
-  const cache = new MemoryCache()
   const log = (message: string) => console.log(message)
+  const { cache, store } = storage(env, log)
   const agent = userAgent(env)
   const google = hasValue(env, 'GOOGLE_ROUTES_KEY') ? createRoutesClient(env.GOOGLE_ROUTES_KEY!.trim()) : null
   return {
@@ -45,7 +59,7 @@ export function defaultDeps(env: Env): AppDeps {
     overpass: createOverpass({ userAgent: agent, cache }),
     weather: createWeather({ cache }),
     llm: createLlm(env, { log }),
-    store: new MemoryTripStore(),
+    store,
     now: () => new Date(),
     newId: () => randomUUID(),
   }
@@ -58,10 +72,15 @@ export function createApp(env: Env = process.env, deps: AppDeps = defaultDeps(en
     routes.push({ method, ...compile(path), handler })
   }
 
-  add('GET', '/api/health', (_req, res) => sendJson(res, 200, buildHealth(env)))
+  add('GET', '/api/health', async (_req, res) => {
+    const databaseOk = deps.store.kind === 'mongo' ? await deps.store.ping() : true
+    sendJson(res, 200, buildHealth(env, new Date(), databaseOk))
+  })
   add('POST', '/api/routes/legs', (req, res) => handleLegs(req, res, deps))
   add('POST', '/api/trips', (req, res) => handlePlanTrip(req, res, deps))
+  add('GET', '/api/trips', (_req, res) => handleListTrips(res, deps))
   add('GET', '/api/trips/:id', (_req, res, params) => handleGetTrip(res, params.id ?? '', deps))
+  add('DELETE', '/api/trips/:id', (_req, res, params) => handleDeleteTrip(res, params.id ?? '', deps))
 
   return async function handle(req: Req, res: Res): Promise<void> {
     try {

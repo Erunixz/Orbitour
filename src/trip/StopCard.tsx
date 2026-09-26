@@ -1,14 +1,16 @@
 import type { CSSProperties } from 'react'
 import { directionsUrl } from '../lib/mapsLink'
+import { isStart, stopLabel, visitCount } from '../lib/stops'
 import type { Leg, Stop } from '../lib/types'
 import { dayColor } from './dayColors'
 import { formatDistance, formatMinutes, kindLabels, modeLabels, transitLines } from './format'
 
 type Props = {
+  /** All stops of the day, for numbering. */
+  stops: Stop[]
   stop: Stop
   day: number
   index: number
-  total: number
   previous: Stop | null
   next: Stop | null
   /** Leg from the previous stop to this one. */
@@ -17,12 +19,16 @@ type Props = {
   nextLeg: Leg | null
 }
 
-export function StopCard({ stop, day, index, total, previous, next, incomingLeg, nextLeg }: Props) {
+export function StopCard({ stops, stop, day, index, previous, next, incomingLeg, nextLeg }: Props) {
+  const start = isStart(stop)
+  const label = stopLabel(stops, index)
+  const total = visitCount(stops)
+  const position = start ? 'Start' : `Stop ${label} of ${total}`
   return (
     <article
       className="stop-card"
       style={{ '--day-color': dayColor(day) } as CSSProperties}
-      aria-label={`Day ${day + 1}, stop ${index + 1} of ${total}`}
+      aria-label={`Day ${day + 1}, ${position.toLowerCase()}`}
     >
       <div className="stop-photo">
         {stop.photo ? (
@@ -36,24 +42,31 @@ export function StopCard({ stop, day, index, total, previous, next, incomingLeg,
           </figure>
         ) : (
           <div className="stop-photo-empty" aria-hidden="true">
-            {index + 1}
+            {label}
           </div>
         )}
       </div>
 
       <div className="stop-body">
         <p className="stop-meta">
-          Day {day + 1} · Stop {index + 1} of {total} · {kindLabels[stop.kind]}
+          Day {day + 1} · {position}
+          {!start && <> · {kindLabels[stop.kind]}</>}
           {stop.mustSee && <span className="badge">Must see</span>}
         </p>
         <h2>{stop.name}</h2>
-        <p className="stop-time">
-          {stop.arrive} to {stop.depart} · {formatMinutes(stop.visitMin)} here
-        </p>
+        {start ? (
+          <p className="stop-time">Leave at {stop.depart}</p>
+        ) : (
+          <p className="stop-time">
+            {stop.arrive} to {stop.depart} · {formatMinutes(stop.visitMin)} here
+          </p>
+        )}
         <p>{stop.summary}</p>
-        <p className="stop-reason">
-          <strong>Why it fits:</strong> {stop.reason}
-        </p>
+        {!start && (
+          <p className="stop-reason">
+            <strong>Why it fits:</strong> {stop.reason}
+          </p>
+        )}
 
         {next ? <NextLeg next={next} leg={nextLeg} /> : <p className="stop-next">Last stop of the day.</p>}
 

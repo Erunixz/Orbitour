@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Trip } from '../lib/types'
+import { visitCount } from '../lib/stops'
 import { useNarrowScreen } from '../map/hooks'
 import { MapView, type Focus } from '../map/MapView'
 import { dayColor } from './dayColors'
@@ -14,7 +15,8 @@ function isTyping(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-export function TripScreen({ trip }: { trip: Trip }) {
+/** `notice` is a warning about the trip itself, such as "not saved". */
+export function TripScreen({ trip, notice }: { trip: Trip; notice?: string }) {
   const counts = useMemo(() => trip.days.map((d) => d.stops.length), [trip])
   const [view, setView] = useState<View>(() => viewFromHash(window.location.hash, counts))
   const [followRoute, setFollowRoute] = useFollowRoute()
@@ -91,6 +93,11 @@ export function TripScreen({ trip }: { trip: Trip }) {
       {!narrow && (
         <aside className="sidebar" aria-label="Trip plan">
           <TripHeading trip={trip} />
+          {notice && (
+            <p className="trip-notice" role="alert">
+              {notice}
+            </p>
+          )}
           {dayTabs}
           <div className="sidebar-scroll">{dayPanel}</div>
           <footer className="sidebar-footer">
@@ -115,6 +122,11 @@ export function TripScreen({ trip }: { trip: Trip }) {
         {narrow && (
           <header className="trip-header">
             <TripHeading trip={trip} />
+            {notice && (
+              <p className="trip-notice" role="alert">
+                {notice}
+              </p>
+            )}
           </header>
         )}
 
@@ -126,7 +138,7 @@ export function TripScreen({ trip }: { trip: Trip }) {
                 stop={stop}
                 day={view.day}
                 index={view.stop}
-                total={day.stops.length}
+                stops={day.stops}
                 previous={day.stops[view.stop - 1] ?? null}
                 next={day.stops[view.stop + 1] ?? null}
                 incomingLeg={day.legs[view.stop - 1] ?? null}
@@ -159,7 +171,7 @@ export function TripScreen({ trip }: { trip: Trip }) {
                   aria-controls="sheet-panel"
                   onClick={() => setSheetOpen((o) => !o)}
                 >
-                  {sheetOpen ? 'Hide stops' : `Stops (${day.stops.length})`}
+                  {sheetOpen ? 'Hide stops' : `Stops (${visitCount(day.stops)})`}
                 </button>
               </div>
               {sheetOpen && (
@@ -190,7 +202,7 @@ function OverviewCard({ trip, dayIndex }: { trip: Trip; dayIndex: number }) {
         </h2>
         {first && last ? (
           <p className="stop-time">
-            {first.arrive} to {last.depart} · {day.stops.length} stops · about {formatMinutes(travel)} getting around
+            {first.depart} to {last.depart} · {visitCount(day.stops)} stops · about {formatMinutes(travel)} getting around
           </p>
         ) : (
           <p className="muted">No stops on this day.</p>
