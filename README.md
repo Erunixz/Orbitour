@@ -12,7 +12,7 @@
 
 | Start from an example | Explore the plan stop by stop |
 | --- | --- |
-| ![Example trips](docs/examples.png) | ![Trip view with sidebar and stop card](docs/trip.png) |
+| ![Example trips](docs/examples.png) | ![Trip view with sidebar and stop card](docs/trip.png)(docs/trip2.png) |
 
 ## Highlights
 
