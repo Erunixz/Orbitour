@@ -230,11 +230,6 @@ tests/       Vitest tests with fakes for every outside service
 | /status says the database is not reachable | Check `MONGODB_URI` has the user and password, your IP is allowed in Atlas, and restart `npm run dev` |
 | The map shows a grid | No Tiles key, or today's 3D sessions are used up. A message on the map says which |
 
-## Roadmap
-
-- Deploy as a single Vercel function (`api/index.ts` is ready; needs `vercel.json`, a longer timeout for planning, and an unbuffered event stream).
-- Replace the text "Google" credit on the map with the official logo, as the Map Tiles policies require for public sites.
-- Opening hours from OpenStreetMap in the Timekeeper.
 
 ## Credits
 
