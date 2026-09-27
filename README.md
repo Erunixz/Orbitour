@@ -18,14 +18,21 @@
 
 ## Highlights
 
-- **AI that cannot make things up.** The two agents only choose and critique places. Every place comes from a verified list, and all times, distances and routes are computed in code. Every model reply is validated against a Zod schema before it is used.
-- **Verified tourist places.** A place is a candidate only if OpenStreetMap tags it as worth visiting (museum, castle, viewpoint, monument…) *and* it has a Wikipedia article. Places are ranked by how many language editions of Wikipedia cover them (from Wikidata), so Paris starts with the Eiffel Tower and the Louvre, not a street or a historical event.
-- **Preferences are rules, not hints.** Every stop must match a stated interest. A "free" budget excludes paid entry, and families get no long climbs. Code checks this after the AI picks, and a Critic agent sends bad picks back to be replaced.
-- **A multi-stage planning pipeline, streamed live.** Ten crew members (8 code tools and 2 agents) run in a fixed order. Progress streams to the browser over Server-Sent Events, and pins appear on the map as places are verified.
-- **Cinematic 3D camera.** Stop-to-stop flights swing around the target along the shorter arc and pull back while turning. The camera maths is pure and unit-tested. While a plan is being made, the camera circles the city from far out.
-- **Built to stay cheap.** Every upstream answer is cached (memory or MongoDB). Routes requests send a field mask so only used fields are billed. There are per-visitor daily plan limits and per-device 3D-session limits, and rendering pauses in hidden tabs.
-- **Degrades gracefully.** No keys at all? You get a sample trip on a grid map. No Routes key? Straight-line estimates, clearly marked. OpenStreetMap down? The place search falls back to Wikipedia, and the planning screen says so.
-- **Tested offline.** 189 Vitest tests cover the pipeline, the verified-place rules, camera maths, editing, storage and the HTTP API, with fakes for every outside service. CI runs the type checks, build and tests on every push, with no keys.
+- **Grounded AI planning.** Two agents handle selection and critique, but neither can invent places. Every recommendation must come from a verified candidate set, while routes, distances, and timing are computed deterministically in code. All model outputs are validated with Zod before entering the pipeline.
+
+- **High-quality place discovery.** Candidates are filtered using OpenStreetMap tourism tags and Wikipedia presence, then ranked using Wikidata and cross-language Wikipedia coverage. This pushes major landmarks like the Eiffel Tower or Louvre above noisy or irrelevant geographic results.
+
+- **Hard preference constraints.** User preferences are enforced in code rather than left to prompt-following. Budget, interests, accessibility, and family constraints are validated after selection, with a Critic agent automatically rejecting and replacing invalid stops.
+
+- **10-stage planning pipeline.** Eight deterministic tools and two AI agents run in a structured sequence to discover, rank, validate, route, and assemble each itinerary. Progress streams to the frontend through Server-Sent Events, with map pins appearing as locations are verified.
+
+- **Cinematic 3D navigation.** Custom camera interpolation creates smooth stop-to-stop flights, shorter-arc rotations, dynamic zoom-outs, and city-orbit animations during generation. The camera math is isolated, deterministic, and unit-tested.
+
+- **Cost-aware architecture.** Upstream responses are cached in memory and MongoDB, routing requests use field masks to minimize billed data, and usage limits control plan generation and 3D sessions. Rendering also pauses when the browser tab is inactive.
+
+- **Resilient external-service handling.** Routing can fall back to clearly labeled straight-line estimates, while place discovery can switch from OpenStreetMap to Wikipedia when required, allowing the planning pipeline to continue instead of failing outright.
+
+- **189 automated tests.** Vitest covers the planning pipeline, ranking and verification rules, camera math, itinerary editing, persistence, and HTTP APIs. CI runs type checking, production builds, and the full test suite on every push.
 
 ## How planning works
 
